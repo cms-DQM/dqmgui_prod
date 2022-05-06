@@ -952,29 +952,32 @@ static void objectToJSON(const std::string &name, const std::string &path,
                                                       ? "TH2F"
                                                       : type == DQMNet::
                                                                     DQM_PROP_TYPE_TH2S
-                                                            ? "TH2S"
-                                                            : type == DQMNet::
-                                                                          DQM_PROP_TYPE_TH2D
-                                                                  ? "TH2D"
-                                                                  : type == DQMNet::
-                                                                                DQM_PROP_TYPE_TH3F
-                                                                        ? "TH3F"
+                                                              ? "TH2S"
+                                                              : type == DQMNet::
+                                                                            DQM_PROP_TYPE_TH2I
+                                                                    ? "TH2I"
+                                                                    : type == DQMNet::
+                                                                                DQM_PROP_TYPE_TH2D
+                                                                        ? "TH2D"
                                                                         : type == DQMNet::
-                                                                                      DQM_PROP_TYPE_TH3S
-                                                                              ? "TH3S"
+                                                                                      DQM_PROP_TYPE_TH3F
+                                                                              ? "TH3F"
                                                                               : type == DQMNet::
-                                                                                            DQM_PROP_TYPE_TH3D
-                                                                                    ? "TH3D"
+                                                                                            DQM_PROP_TYPE_TH3S
+                                                                                    ? "TH3S"
                                                                                     : type == DQMNet::
-                                                                                                  DQM_PROP_TYPE_TPROF
-                                                                                          ? "TPROF"
+                                                                                                  DQM_PROP_TYPE_TH3D
+                                                                                          ? "TH3D"
                                                                                           : type == DQMNet::
-                                                                                                        DQM_PROP_TYPE_TPROF2D
-                                                                                                ? "TPROF2D"
+                                                                                                        DQM_PROP_TYPE_TPROF
+                                                                                                ? "TPROF"
                                                                                                 : type == DQMNet::
-                                                                                                              DQM_PROP_TYPE_DATABLOB
-                                                                                                      ? "DATABLOB"
-                                                                                                      : "OTHER")
+                                                                                                              DQM_PROP_TYPE_TPROF2D
+                                                                                                      ? "TPROF2D"
+                                                                                                      : type == DQMNet::
+                                                                                                                    DQM_PROP_TYPE_DATABLOB
+                                                                                                            ? "DATABLOB"
+                                                                                                            : "OTHER")
           .arg((unsigned long)lumisect)
           .arg((report & DQMNet::DQM_PROP_REPORT_ALARM) ? 1 : 0)
           .arg((report & DQMNet::DQM_PROP_REPORT_ERROR) ? 1 : 0)

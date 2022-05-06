@@ -485,6 +485,7 @@ classifyMonitorElement(DQMStore & /* store */,
   case MonitorElement::DQM_KIND_TH2F:
   case MonitorElement::DQM_KIND_TH2S:
   case MonitorElement::DQM_KIND_TH2D:
+  case MonitorElement::DQM_KIND_TH2I:
   case MonitorElement::DQM_KIND_TH3F:
   case MonitorElement::DQM_KIND_TPROFILE:
   case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -1132,6 +1133,7 @@ extend(VisDQMIndex &ix,
 	    case MonitorElement::DQM_KIND_TH2F:
 	    case MonitorElement::DQM_KIND_TH2S:
 	    case MonitorElement::DQM_KIND_TH2D:
+	    case MonitorElement::DQM_KIND_TH2I:
 	    case MonitorElement::DQM_KIND_TH3F:
 	    case MonitorElement::DQM_KIND_TPROFILE:
 	    case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -1360,6 +1362,7 @@ readFileStream(FileInfo &fi,
     case MonitorElement::DQM_KIND_TH2F:
     case MonitorElement::DQM_KIND_TH2S:
     case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH2I:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -1485,6 +1488,7 @@ readFileStreamProtocolBuffer(FileInfo &fi,
     case MonitorElement::DQM_KIND_TH2F:
     case MonitorElement::DQM_KIND_TH2S:
     case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH2I:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -2735,6 +2739,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH1S ? ", TH1S" : "")
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2F ? ", TH2F" : "")
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2S ? ", TH2S" : "")
+	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2I ? ", TH2I" : "")
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH3F ? ", TH3F" : "")
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH3S ? ", TH3S" : "")
 	      << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TPROF ? ", TPROF" : "")
