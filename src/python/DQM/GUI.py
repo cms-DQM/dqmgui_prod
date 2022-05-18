@@ -4,8 +4,8 @@ from stat import *
 from copy import deepcopy, copy
 from threading import Thread, Lock
 from Monitoring.DQM import Accelerator
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted, thousands
-from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine, thread_data, log, url
+from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted, thousands, ParameterManager
+from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine, thread_data, log, url, tools
 from cherrypy.lib.static import serve_file
 from cherrypy.lib import cptools, http
 from struct import pack, unpack
@@ -16,6 +16,8 @@ DEF_DQM_PORT = 9090
 
 # Validate DQM file paths.
 RX_SAFE_PATH = re.compile(r"^[A-Za-z0-9][-A-Za-z0-9_]*(?:\.(?:root|zip|ig))?$")
+
+tools.params = ParameterManager()
 
 # --------------------------------------------------------------------
 # DQM uploads utility class to properly set headers, status and to
@@ -48,7 +50,11 @@ class DQMUpload:
   # Check that a required parameter has been given just once,
   # and the value matches the given regular expression.
   def _check(self, name, arg, rx):
+    if name == "filename":
+      arg = str(arg)
     if not arg or not isinstance(arg, str):
+      self._error(self.STATUS_ERROR_EXISTS, "Parameter %s of value %s" % (name, arg),
+                  " is of type %s" % str(type(arg)))
       self._error(self.STATUS_BAD_REQUEST,
                   "Incorrect or missing %s parameter" % name,
                   "Must provide single argument")
@@ -128,6 +134,7 @@ class DQMFileAccess(DQMUpload):
   # FIXME: Verify the request was submitted securely and is permitted.
   # FIXME: Determine producer from certificate information.
   @expose
+  @tools.params()
   def put(self,
           size = None,
           checksum = None,
@@ -167,7 +174,7 @@ class DQMFileAccess(DQMUpload):
     self._check("checksum", checksum,      r"^(md5:[A-Za-z0-9]+|crc32:\d+)$")
     self._check("filename", file.filename, r"^[-A-Za-z0-9_]+\.root$")
 
-    m = re.match(r"^(DQM)_V\d+(_[A-Za-z]+)?_R(\d+)(__.*)?\.root", file.filename)
+    m = re.match(r"^(DQM)_V\d+(_[A-Za-z0-9]+)?_R(\d+)(__.*)?\.root", str(file.filename))
     if not m:
       self._error(self.STATUS_ERROR_PARAMETER,
                   "File name does not match the expected convention")
@@ -250,13 +257,23 @@ class DQMFileAccess(DQMUpload):
     # Indicate success.
     self._status(self.STATUS_OK, "File saved", "Wrote %d bytes" % nsaved)
     _loginfo("saved file %s size %d checksum %s" % (fname, size, checksum))
-    return "Thanks.\n"
+    message = ("Thanks.\n"
+               "The server received your file. However this does not mean "
+               "that the file was indexed successfully.\n"
+               "A different server process will now check the filename to "
+               "determine in which folder to archive it.\n"
+               "After that, another process will attempt to index it. This "
+               "might take some minutes.\n"
+               "In case of doubt, please check the server logs of the receive-"
+               "daemon and import-daemon.")
+    return message
 
   # ------------------------------------------------------------------
   # Retrieve files from the server.  Pretends to be somewhat like the
   # apache mod_dir file browsing scheme.  Serves only files with valid
   # and safe path references.  FIXME: Bandwidth limiting and ACLs?
   @expose
+  @tools.params()
   def browse(self, *path, **kwargs):
     rooturl = self.server.baseUrl + "/data/browse"
     if not self.roots or len(self.roots) == 0:
@@ -341,6 +358,7 @@ class DQMLayoutAccess(DQMUpload):
   # attempts to save the file safely.  Sets headers in the response
   # to indicate what happened, either an error or success.
   @expose
+  @tools.params()
   def put(self,
           file = None,
           *args,
@@ -420,6 +438,8 @@ class DQMToJSON(Accelerator.DQMToJSON):
                config={"/": {'request.show_tracebacks': False}})
 
   @expose
+  @tools.params()
+  @tools.gzip()
   def samples(self, *args, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
@@ -429,6 +449,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
     return result
 
   @expose
+  @tools.params()
   def default(self, srcname, runnr, dsP, dsW, dsT, *path, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
@@ -453,7 +474,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
 # --------------------------------------------------------------------
 # Management interface for talking to the ROOT rendering process.
 class DQMRenderLink(Accelerator.DQMRenderLink):
-  def __init__(self, server, plugin, nproc = 5, debug = False):
+  def __init__(self, server, plugin, nproc = 8, debug = False):
     Accelerator.DQMRenderLink.__init__ \
       (self, server.sessiondir.rsplit('/', 1)[0],
        server.logdir, plugin, nproc, debug)
@@ -480,21 +501,38 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
     self.server = server
 
   # Generate an overlaid image.  Finds all the servers sources
-  # and generates final list of (source, runnr, dataset, path)
+  # and generates final list of (source, runnr, dataset, path, label)
   # tuples to pass to C++ layer to process.
   def plot(self, *junk, **options):
     sources = dict((s.plothook, s) for s in self.server.sources
 		   if getattr(s, 'plothook', None))
 
     objs = options.get("obj", [])
+    labels = options.get("reflabel", [])
     if isinstance(objs, str): objs = [objs]
-
+    if isinstance(labels, str): labels = [labels]
+    # Prepend a fake label for the first object which is not a reference, but
+    # the real one. Standard reference objects are never passed via the URL,
+    # but are extracted directly from the underlying database. If the user
+    # selected "Standard", therefore, no obj parameter will be added to the URL
+    # and the symmetry will be kept between obj and reflabel (modulo the insert
+    # below).
+    # Old URL pointing directly to plots via plotfairy will stop working, since
+    # they are missing the reflabel parameters. For this reason, in order to
+    # keep them functional, we artificially keep on adding reflabels until
+    # needed.
     final = []
-    for o in objs:
+    for i, o in enumerate(objs):
       (srcname, runnr, dsP, dsW, dsT, path) = o.split("/", 5)
       if srcname in sources and srcname != "unknown":
+        if i==0:
+          labels.insert(0, "Ignore")
+        elif i >= len(labels):
+          labels.append(runnr)
         final.append((sources[srcname], int(runnr),
-                      "/%s/%s/%s" % (dsP, dsW, dsT), path))
+                      "/%s/%s/%s" % (dsP, dsW, dsT), path, labels[i]))
+    print(final, options)
+    assert(len(labels)==len(objs))
     return self._plot(final, options)
 
 # --------------------------------------------------------------------
@@ -693,11 +731,11 @@ class DQMWorkspace:
                  'dqm.strip.n':        "",
                  'dqm.showstats':      "1",
                  'dqm.showerrbars':    "0",
-                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'param':
-                                        [{'type': "refobj", 'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""},
-					 {'type': "none",   'run': "", 'dataset': "", 'ktest': ""}]},
+                 'dqm.reference':      {'show': "customise", 'position': "overlay", 'norm': "True", 'param':
+                   [{'type': "refobj",  'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""},
+                     {'type': "none",   'run': "", 'dataset': "", 'label': "", 'ktest': ""}]},
                  'dqm.submenu':	       "data",
                  'dqm.size':           "M",
                  'dqm.root':           {},
@@ -767,6 +805,7 @@ class DQMWorkspace:
            showerrbars = None,
            referencepos  = None,
            referenceshow = None,
+           referencenorm = None,
            referenceobj1 = None,
            referenceobj2 = None,
            referenceobj3 = None,
@@ -879,6 +918,11 @@ class DQMWorkspace:
         raise HTTPError(500, "Incorrect referencepos parameter")
       session['dqm.reference']['position'] = referencepos
 
+    if referencenorm != None:
+      if not isinstance(referencenorm, str):
+        raise HTTPError(500, "Incorrect referencenorm parameter")
+      session['dqm.reference']['norm'] = referencenorm
+
     for refidx, refobj in ((0, referenceobj1),
 			   (1, referenceobj2),
 			   (2, referenceobj3),
@@ -887,17 +931,19 @@ class DQMWorkspace:
       if refobj != None:
         if not isinstance(refobj, str):
           raise HTTPError(500, "Incorrect referenceobj parameter")
-        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*):([0-9.]*)$", refobj)
+        m = re.match(r"^other:(\d*):([-/A-Za-z0-9_]*)(:([A-Za-z0-9 ]*))?:([0-9.]*)$", refobj)
         if refobj == "refobj" or refobj == "none":
           param['type'] = refobj
           param['run'] = ""
           param['dataset'] = ""
+          param['label']   = ""
           param['ktest']   = ""
         elif m:
           param['type']    = "other"
           param['run']     = m.group(1)
           param['dataset'] = m.group(2)
-          param['ktest']   = m.group(3)
+          param['label']   = m.group(4) or ''
+          param['ktest']   = m.group(5)
 	else:
           raise HTTPError(500, "Incorrect referenceobj parameter")
 
@@ -1068,6 +1114,7 @@ class DQMWorkspace:
     self._set(session,
 	      referencepos         = kwargs.get("position", None),
 	      referenceshow        = kwargs.get("show", None),
+              referencenorm        = kwargs.get("norm", None),
 	      referenceobj1 = kwargs.get("r1", None),
 	      referenceobj2 = kwargs.get("r2", None),
 	      referenceobj3 = kwargs.get("r3", None),
@@ -1157,8 +1204,16 @@ class DQMWorkspace:
 
   def sessionSetJsonmode(self, session, *args, **kwargs):
     jsonmode = kwargs.get('mode', None)
-    if isinstance(jsonmode, str) or jsonmode in ("yes", "no"):
+    if jsonmode in ("yes", "no"):
       session['dqm.zoom.jsonmode'] = (jsonmode == "yes")
+
+    self.gui._saveSession(session)
+    return self._state(session)
+
+  def sessionSetJSrootmode(self, session, *args, **kwargs):
+    jsrootmode = kwargs.get('mode', None)
+    if jsrootmode in ("yes", "no"):
+      session['dqm.zoom.jsrootmode'] = (jsrootmode == "yes")
 
     self.gui._saveSession(session)
     return self._state(session)

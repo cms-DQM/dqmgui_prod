@@ -62,6 +62,10 @@ struct VisDQMImgInfo
 {
   std::string		imgspec;
   std::string		drawOptions;
+  std::string           reflabel1;
+  std::string           reflabel2;
+  std::string           reflabel3;
+  std::string           reflabel4;
   VisDQMReference	reference;
   VisDQMStripTrend	trend;
   int			width;
@@ -72,6 +76,7 @@ struct VisDQMImgInfo
   VisDQMAxisInfo	xaxis;
   VisDQMAxisInfo	yaxis;
   VisDQMAxisInfo	zaxis;
+  std::string           refnorm;
 };
 
 struct VisDQMObject : DQMNet::Object

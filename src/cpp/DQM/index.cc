@@ -3,7 +3,7 @@
 /// Flag indicating whether and how much to debug.
 int debug = 0;
 
-#define DEBUG(x, msg) if (debug >= x) std::cout << "DEBUG: " << msg << std::flush
+#define DEBUG(x, msg) if (debug >= x) std::cout << "DEBUG[" << x << "]: " << msg << std::flush
 
 #include "DQM/StreamSample.pb.h"
 #include "DQM/VisDQMIndex.h"
@@ -250,6 +250,7 @@ Regexp rxrelvalrundepmc("^/RelVal[^/]+/(CMSSW(?:_[0-9]+)+(?:_pre[0-9]+)?)[-_].*r
 static const std::string MEINFOBOUNDARY("____MEINFOBOUNDARY____");
 static const std::string MEROOTBOUNDARY("____MEROOTBOUNDARY____");
 static const size_t ALL_SAMPLES = ~(size_t)0;
+static const size_t LAST_STREAMER = ~(size_t)0;
 
 // ----------------------------------------------------------------------
 /** Utility function to round @a value to a value divisible by @a unit. */
@@ -270,7 +271,7 @@ static bool isStreamPBFile(const char* filename)
 }
 
 /** Utility function to read a double from a stream. */
-static inline void readDouble(ifstream &iread, double *into)
+static inline void readDouble(std::ifstream &iread, double *into)
 {
   std::string tmp;
   iread >> tmp;
@@ -278,7 +279,7 @@ static inline void readDouble(ifstream &iread, double *into)
 }
 
 /** Utility function to write a double into a stream. */
-static inline void writeDouble(ofstream &iwrite,
+static inline void writeDouble(std::ofstream &iwrite,
 			       const char *prefix,
 			       double val)
 {
@@ -1506,7 +1507,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
   // Grab streamer info before we've opened any ROOT files.
   std::string streamerinfoFromRoot;
   std::string streamerinfoFromStream;
-  buildExtendedStreamerInfo(streamerinfoFromRoot);
+  buildCompleteStreamerInfo(streamerinfoFromRoot);
   DEBUG(2, streamerinfoFromRoot.size() << " bytes of streamer info captured\n");
 
   // Prepare but do not yet open the index.  Remember the time when we
@@ -1557,7 +1558,7 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       // Read in the file with appropriate format.
       std::vector<MonitorElementInfo> minfo;
-      StringAtomTree rootobjs(2500000);
+      StringAtomTree rootobjs(OBJECTNAMES);
       size_t    numObjs = 0;
       uint64_t 	numEvents = 0;
       uint64_t 	numLumiSections = 0;
@@ -1633,11 +1634,11 @@ addFiles(const Filename &indexdir, std::list<FileInfo> &files)
 
       // Grab various strings tables from the master file.
       DEBUG(1, "reading string tables\n");
-      StringAtomTree vnames(10000);
-      StringAtomTree dsnames(100000);
-      StringAtomTree pathnames(1000000);
-      StringAtomTree objnames(2500000);
-      StringAtomTree streamers(100);
+      StringAtomTree vnames(CMSSWNAMES);
+      StringAtomTree dsnames(DATASETNAMES);
+      StringAtomTree pathnames(PATHNAMES);
+      StringAtomTree objnames(OBJECTNAMES);
+      StringAtomTree streamers(STREAMERS);
 
       readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
       readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -1893,11 +1894,11 @@ removeFiles(const Filename &indexdir, const std::string &dataset, int32_t runnr)
 
     // Grab various strings tables from the master file.
     DEBUG(1, "reading string tables\n");
-    StringAtomTree vnames(10000);
-    StringAtomTree dsnames(100000);
-    StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(2500000);
-    StringAtomTree streamers(100);
+    StringAtomTree vnames(CMSSWNAMES);
+    StringAtomTree dsnames(DATASETNAMES);
+    StringAtomTree pathnames(PATHNAMES);
+    StringAtomTree objnames(OBJECTNAMES);
+    StringAtomTree streamers(STREAMERS);
 
     readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
     readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2236,11 +2237,11 @@ mergeIndexes(const Filename &indexdir, std::list<Filename> &mergeix)
       // Grab various strings tables from the master files.
       // Build mapping tables from imported index to target.
       DEBUG(1, "reading string tables\n");
-      StringAtomTree vnames(10000),     othvnames(10000);
-      StringAtomTree dsnames(100000),    othdsnames(100000);
-      StringAtomTree pathnames(1000000), othpathnames(1000000);
-      StringAtomTree objnames(2500000), othobjnames(2500000);
-      StringAtomTree streamers(100),    othstreamers(100);
+      StringAtomTree vnames(CMSSWNAMES),     othvnames(CMSSWNAMES);
+      StringAtomTree dsnames(DATASETNAMES),  othdsnames(DATASETNAMES);
+      StringAtomTree pathnames(PATHNAMES),   othpathnames(PATHNAMES);
+      StringAtomTree objnames(OBJECTNAMES),  othobjnames(OBJECTNAMES);
+      StringAtomTree streamers(STREAMERS),   othstreamers(STREAMERS);
 
       readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
       readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
@@ -2462,11 +2463,11 @@ extended streamers, since this will compress the size of the p-trie
 for the streamers, possibly making some streamerinfo pointers in the
 registered samples NULL. */
 static int
-fixStreamerInfo(const Filename &indexdir)
+fixStreamerInfo(const Filename &indexdir, size_t streamerid)
 {
   // Grab streamer info before we've opened any ROOT files.
   std::string partial_streamerinfoFromRoot;
-  buildExtendedStreamerInfo(partial_streamerinfoFromRoot);
+  buildCompleteStreamerInfo(partial_streamerinfoFromRoot);
   DEBUG(2, partial_streamerinfoFromRoot.size()
         << " bytes of additional streamer info captured\n");
 
@@ -2483,23 +2484,33 @@ fixStreamerInfo(const Filename &indexdir)
     // Grab various strings tables from the master files.
     // Build mapping tables from imported index to target.
     DEBUG(1, "reading string tables\n");
-    StringAtomTree vnames(10000);
-    StringAtomTree dsnames(100000);
-    StringAtomTree pathnames(1000000);
-    StringAtomTree objnames(2500000);
-    StringAtomTree streamers(100);
-    StringAtomTree extended_streamers(100);
+    StringAtomTree vnames(CMSSWNAMES);
+    StringAtomTree dsnames(DATASETNAMES);
+    StringAtomTree pathnames(PATHNAMES);
+    StringAtomTree objnames(OBJECTNAMES);
+    StringAtomTree streamers(STREAMERS);
+    StringAtomTree extended_streamers(STREAMERS);
 
     readStrings(pathnames, master, IndexKey(0, VisDQMIndex::MASTER_SOURCE_PATHNAME));
     readStrings(dsnames, master, IndexKey(0, VisDQMIndex::MASTER_DATASET_NAME));
     readStrings(vnames, master, IndexKey(0, VisDQMIndex::MASTER_CMSSW_VERSION));
     readStrings(objnames, master, IndexKey(0, VisDQMIndex::MASTER_OBJECT_NAME));
     readStrings(streamers, master, IndexKey(0, VisDQMIndex::MASTER_TSTREAMERINFO));
+    if (streamerid == LAST_STREAMER) {
+      DEBUG(1, "Modifying the last streamerInfo available at location: "
+            << streamers.size() - 1 << std::endl);
+      streamerid = streamers.size() - 1;
+    }
     for (size_t i = 1, e = streamers.size(); i != e; ++i) {
       const std::string &original = streamers.key(i);
-      if (i == (e - 1)) {
+      if (i == streamerid) {
+        ASSERT(extended_streamers.search(partial_streamerinfoFromRoot) != StringAtomTree::npos);
         extended_streamers.insert(partial_streamerinfoFromRoot);
+        DEBUG(2, partial_streamerinfoFromRoot.size()
+              << " bytes of new streamerInfo will replace " << original.size()
+              << " bytes of previous streamer info at position " << i << "\n");
       } else {
+        ASSERT(extended_streamers.search(original) != StringAtomTree::npos);
         extended_streamers.insert(original);
       }
     }
@@ -2582,11 +2593,11 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree vnames(10000);
-  StringAtomTree dsnames(100000);
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree vnames(CMSSWNAMES);
+  StringAtomTree dsnames(DATASETNAMES);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
 
   // Read the master catalogue. We need all the info anyway.
@@ -2669,7 +2680,7 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
       MD5Digest md5;
       const std::string &data = streamers.key(i);
       md5.update(&data[0], data.size());
-      std::cout << "STREAMER #" << (i-1)
+      std::cout << "STREAMER #" << i
 		<< "=[len:" << data.size()
 		<< ", md5:" << md5.format() << "]\n";
     }
@@ -2851,6 +2862,8 @@ dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid)
 	      << ", type:" << (ref ? typeid(*ref).name() : "(none)")
 	      << ", name:'" << (ref ? ref->GetName() : "")
 	      << "'] md5=" << md5.format() << "\n";
+        delete ref;
+        delete obj;
 	  }
 	  else
 	    break;
@@ -2886,9 +2899,9 @@ streamout(const Filename &indexdir, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
 
   // no way in dumping more than one sample at a time, for the moment.
@@ -3083,9 +3096,9 @@ streamoutProtocolBuffer(const Filename &indexdir, size_t sampleid)
   VisDQMFile *master;
   VisDQMIndex ix(indexdir);
   std::list<VisDQMIndex::Sample> samples;
-  StringAtomTree pathnames(1000000);
-  StringAtomTree objnames(2500000);
-  StringAtomTree streamers(100);
+  StringAtomTree pathnames(PATHNAMES);
+  StringAtomTree objnames(OBJECTNAMES);
+  StringAtomTree streamers(STREAMERS);
   DQMNet::QReports qreports;
   dqmgui::StreamSample sample;
   std::string fname;
@@ -3283,7 +3296,7 @@ showusage(void)
 	    << app.name() << " [OPTIONS] dump [--sample SAMPLE-ID] INDEX-DIRECTORY [{ catalogue | info | data | all }]\n  "
 	    << app.name() << " [OPTIONS] stream --sample SAMPLE-ID INDEX-DIRECTORY\n  "
 	    << app.name() << " [OPTIONS] streampb --sample SAMPLE-ID INDEX-DIRECTORY\n  "
-	    << app.name() << " [OPTIONS] fixstreamers INDEX-DIRECTORY\n";
+	    << app.name() << " [OPTIONS] fixstreamers [--streamer STREAMER-ID] INDEX-DIRECTORY\n";
   return EXIT_FAILURE;
 }
 
@@ -3308,6 +3321,7 @@ int main(int argc, char **argv)
   int32_t runnr = -1;
   std::string dataset;
   size_t sampleid = ALL_SAMPLES;
+  size_t streamerid = LAST_STREAMER;
   std::list<SampleInfo> samples;
   std::list<FileInfo> files;
   std::list<Filename> mergeix;
@@ -3450,6 +3464,23 @@ int main(int argc, char **argv)
 	else
 	{
 	  std::cerr << app.name() << ": --sample option requires a value\n";
+	  return showusage();
+	}
+      }
+      else
+	break;
+  }
+  else if (task == TASK_FIXSTREAMERS)
+  {
+    for ( ; arg < argc; ++arg)
+      if (! strcmp(argv[arg], "--streamer"))
+      {
+	char *end = 0;
+	if (arg < argc-1)
+	  streamerid = strtoul(argv[++arg], &end, 10);
+	else
+	{
+	  std::cerr << app.name() << ": --streamer option requires a value\n";
 	  return showusage();
 	}
       }
@@ -3772,14 +3803,14 @@ int main(int argc, char **argv)
     else if (task == TASK_STREAMPB)
       return streamoutProtocolBuffer(indexdir, sampleid);
     else if (task == TASK_FIXSTREAMERS)
-      return fixStreamerInfo(indexdir);
+      return fixStreamerInfo(indexdir, streamerid);
     else
     {
       std::cerr << app.name() << ": internal error, unknown task\n";
       return EXIT_FAILURE;
     }
   }
-  catch (Error &e)
+  catch (lat::Error &e)
   {
     std::cerr << app.name() << ": error: " << e.explain() << "\n";
     return EXIT_FAILURE;

@@ -26,6 +26,8 @@
 #include "TCanvas.h"
 #include "TText.h"
 #include "TH1D.h"
+#include "TH2.h"
+#include "TH3.h"
 #include "TProfile.h"
 #include "TColor.h"
 #include "TAxis.h"
@@ -43,6 +45,7 @@
 #include <cassert>
 #include <cerrno>
 #include <map>
+#include <algorithm>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/mman.h>
@@ -50,6 +53,7 @@
 #include <dlfcn.h>
 #include <math.h>
 #include <string>
+#include <limits>
 
 using namespace lat;
 
@@ -351,7 +355,13 @@ parseImageSpec(VisDQMImgInfo &i, const std::string &spec, const char *&error)
 	&& ! parseDouble    (p, "zmax=",         5, i.zaxis.max)
 	&& ! parseDouble    (p, "ktest=",        6, i.ktest)
 	&& ! parseAxisType  (p, "ztype=",        6, i.zaxis.type)
-	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions))
+	&& ! parseOption    (p, "drawopts=",     9, i.drawOptions)
+	&& ! parseOption    (p, "norm=",         5, i.refnorm)
+        && ! parseOption    (p, "reflabel1=",   10, i.reflabel1)
+        && ! parseOption    (p, "reflabel2=",   10, i.reflabel2)
+        && ! parseOption    (p, "reflabel3=",   10, i.reflabel3)
+        && ! parseOption    (p, "reflabel4=",   10, i.reflabel4)
+        )
       return false;
 
     if (*p && *p != ';')
@@ -641,9 +651,11 @@ class VisDQMImageServer : public DQMImplNet<VisDQMObject>
 public:
   static const uint32_t DQM_MSG_GET_IMAGE_DATA	= 4;
   static const uint32_t DQM_MSG_DUMP_PROFILE	= 5;
-  static const uint32_t DQM_MSG_GET_JSON_DATA	= 6;
+  static const uint32_t DQM_MSG_GET_JSON_DATA   = 6;
+  static const uint32_t DQM_MSG_GET_JSROOT_DATA	= 7;
   static const uint32_t DQM_REPLY_IMAGE_DATA	= 105;
   static const uint32_t DQM_REPLY_JSON_DATA 	= 106;
+  static const uint32_t DQM_REPLY_JSROOT_DATA   = 107;
 
   typedef std::vector<DQMRenderPlugin *> RenderPlugins;
   typedef std::map<std::string, lat::Time> BlackList;
@@ -768,7 +780,7 @@ protected:
 	}
 	return true;
       }
-      else if (type == DQM_MSG_GET_IMAGE_DATA || type == DQM_MSG_GET_JSON_DATA)
+      else if (type == DQM_MSG_GET_IMAGE_DATA || type == DQM_MSG_GET_JSON_DATA || type == DQM_MSG_GET_JSROOT_DATA)
       {
         Time start = Time::current();
 	if (debug_)
@@ -856,7 +868,7 @@ protected:
           if(! readRequest(info, odata, objs, numobjs))
             return false;
 
-        if (type == DQM_MSG_GET_JSON_DATA)
+        if (type == DQM_MSG_GET_JSON_DATA || type == DQM_MSG_GET_JSROOT_DATA)
           if(! readJsonRequest(odata, objs, numobjs))
             return false;
 
@@ -870,6 +882,11 @@ protected:
         {
           getJson(&objs[0], numobjs, imgdata);
           words[1] = DQM_REPLY_JSON_DATA;
+        }
+        else if (type == DQM_MSG_GET_JSROOT_DATA)
+        {
+          getJsRoot(&objs[0], numobjs, imgdata);
+          words[1] = DQM_REPLY_JSROOT_DATA;
         }
 	words[0] += imgdata.size();
 	msg->data.reserve(msg->data.size() + words[0]);
@@ -1192,6 +1209,14 @@ private:
       return true;
     }
 
+  void getJsRoot(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
+  {
+    std::string json(std::move(rootObjectToJson(objs[0].object)));
+    DataBlob tmp(json.begin(), json.end());
+    jsondata = tmp;
+    return;
+  }
+
   void getJson(VisDQMObject *objs, size_t /*numobjs*/, DataBlob &jsondata)
   {
     TObject *ob = objs[0].object;
@@ -1294,7 +1319,6 @@ private:
     {
       json = "{'hist': 'unsupported type'}";
     }
-
     replacePseudoNumericValues(json);
     boost::replace_all(json, "'","\"");
 
@@ -1354,7 +1378,31 @@ private:
         if (i.reference == DQM_REF_SAMESAMPLE)
           ss << name;
         else
-          ss << "Ref "<< order;
+          // The numbering logic here is misleading. Numbers do **not** refer
+          // directly to the text-field numbering used in the Javascript,
+          // rather they refer to the actual objects that have been asked and
+          // found in the index. If an object/sample has been asked but not
+          // found, it is skipped but the counter is not incremented. All the
+          // correct handling is done on the server side while searching for
+          // samples/objects and packing information. At this stage we are mere
+          // clients that rely on that information.
+          switch(order) {
+            case 1:
+              ss << i.reflabel1;
+              break;
+            case 2:
+              ss << i.reflabel2;
+              break;
+            case 3:
+              ss << i.reflabel3;
+              break;
+            case 4:
+              ss << i.reflabel4;
+              break;
+            default:
+              assert(0);
+              break;
+          }
         currentStat->AddText(ss.str().c_str())->SetTextColor(color); ss.str("");
       }
       ss << "Entries = " << ref->GetEntries();
@@ -1410,6 +1458,82 @@ private:
   }
 
   // ----------------------------------------------------------------------
+  // Extract the minimum and maximum range of a histogram, excluding
+  // bin with 0 content or with 0 value.
+
+  void computeMinAndMaxForEfficiency(const TH1* h,
+                                     double ratio_min, double ratio_max,
+                                     double &minimum, double &maximum) {
+    int bin, binx, biny, binz;
+    int xfirst  = h->GetXaxis()->GetFirst();
+    int xlast   = h->GetXaxis()->GetLast();
+    int yfirst  = h->GetYaxis()->GetFirst();
+    int ylast   = h->GetYaxis()->GetLast();
+    int zfirst  = h->GetZaxis()->GetFirst();
+    int zlast   = h->GetZaxis()->GetLast();
+    double value = 0;
+    for (binz = zfirst; binz <= zlast; binz++) {
+      for (biny = yfirst; biny <= ylast; biny++) {
+        for (binx = xfirst; binx <= xlast; binx++) {
+          bin = h->GetBin(binx, biny, binz);
+          value = h->GetBinContent(bin);
+          if (value == 0)
+            continue;
+          if (value < minimum && value > ratio_min) {
+            minimum = value;
+          }
+          if (value > maximum && value < ratio_max) {
+            maximum = value;
+          }
+        }
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // Set user-defined ranges for histograms
+  void applyUserRange(TH1* obj, VisDQMImgInfo &i) {
+    double xmin = NAN, xmax = NAN;
+    double ymin = NAN, ymax = NAN;
+    double zmin = NAN, zmax = NAN;
+    // If we have an object that has axes, apply the requested params.
+    // Set only the bounds that were specified, and leave the rest to
+    // the natural range.  Unset bounds have NaN as their value.
+    if (TAxis *a = obj->GetXaxis())
+    {
+      if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
+      {
+        xmin = a->GetXmin();
+        xmax = a->GetXmax();
+        a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
+                        isnan(i.xaxis.max) ? xmax : i.xaxis.max);
+      }
+    }
+
+    if (TAxis *a = obj->GetYaxis())
+    {
+      if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
+      {
+        ymin = a->GetXmin();
+        ymax = a->GetXmax();
+        a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
+                        isnan(i.yaxis.max) ? ymax : i.yaxis.max);
+      }
+    }
+
+    if (TAxis *a = obj->GetZaxis())
+    {
+      if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
+      {
+        zmin = a->GetXmin();
+        zmax = a->GetXmax();
+        a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
+                        isnan(i.zaxis.max) ? zmax : i.zaxis.max);
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------
   // Render ovelaid ROOT objects and their ratio at the bottom.
   void
   doRenderOverlayAndRatio(TCanvas &c,
@@ -1426,24 +1550,24 @@ private:
         dynamic_cast<TObjString *>(ob))
     {
       doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
-      Color_t c = TColor::GetColor(64, 64, 64);
-      doRenderMsg(""/*ob.name*/, "Ratio not supported", c, nukem);
       return;
     }
 
     int colorIndex = sizeof(colors)/sizeof(int);
-    int ratio_label_font_size = 14;
-    // Prepare the TPads
-    TPad *pad1 = new TPad("main","main",0,0.3,1,1);
-    pad1->SetBottomMargin(0);
+    float ratio_label_font_size = 0.12;
+    // Prepare the TPads.  We do not locally delete the TPad nor mark
+    // them to be deleted since they will be take care of by the
+    // TCanvas in which they are rendered.
+    TPad *pad1 = new TPad("main", "main", 0, 0.3, 1, 1);
+    pad1->SetBottomMargin(0.05);
     applyTPadCustomizations(pad1, i);
     pad1->Draw();
     pad1->cd();
 
     doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
     c.cd();
-    TPad *pad2 = new TPad("ratio","ratio",0,0.05,1,0.3);
-    pad2->SetTopMargin(0);
+    TPad *pad2 = new TPad("ratio", "ratio", 0, 0.05, 1, 0.3);
+    pad2->SetTopMargin(0.05);
     if (i.xaxis.type == "lin")
       pad2->SetLogx(0);
     else if (i.xaxis.type == "log")
@@ -1451,59 +1575,101 @@ private:
     pad2->Draw();
     pad2->cd();
 
-    if (TH1 * h = dynamic_cast<TH1 *>(ob))
+    TH1 * h = nullptr;
+    if ( (h = dynamic_cast<TH1 *>(ob)) && (h->GetEntries() != 0))
     {
-      double norm = 1.;
-      if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-        norm = th1f->GetSumOfWeights();
-      else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-        norm = th1d->GetSumOfWeights();
-      bool first_plot = true;
+      double norm = h->GetSumOfWeights();
+      static const double RATIO_MIN = 0.001;
+      static const double RATIO_MAX = 10.0;
+      double ratio_min = RATIO_MAX;
+      double ratio_max = RATIO_MIN;
+      size_t histograms_to_be_drawn = nukem.size();
       for (size_t n = 0; n < numobjs; ++n)
       {
-        TObject *refobj = 0;
+        // Skip the embedded reference histograms, in case it is
+        // there.
         if (n == 0)
-          refobj = objs[0].reference;
-        else
-          refobj = dynamic_cast<TH1 *>(objs[n].object);
-        TH1 * num = dynamic_cast<TH1 *>(h->Clone());
-        nukem.push_back(num);
-        if (TH1 * den = dynamic_cast<TH1 *>(refobj))
+          continue;
+
+        if (TH1 *  den = dynamic_cast<TH1 *>(objs[n].object))
         {
+          // No point in making the ratio if we do have an empty
+          // denominator. The numerator has been already checked.
+          if (den->GetEntries() == 0 or den->GetSumOfWeights() == 0)
+            continue;
+
+          TH1 * num = dynamic_cast<TH1 *>(h->Clone());
+          nukem.push_back(num);
           double sum = den->GetSumOfWeights();
           if (sum)
           {
             if (objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)
               norm = sum = 1.;
             den->Scale(norm/sum);
-            num->SetStats(0); num->Sumw2();
-            num->Divide(den); num->SetMarkerStyle(kFullDotLarge);
-            num->SetMarkerSize(0.75);
-            num->SetMarkerColor(colors[n%colorIndex]);
+            num->SetStats(0);
+            if (!num->GetSumw2N())
+              num->Sumw2();
+            num->Divide(den);
+            num->SetLineColor(colors[n%colorIndex]);
             num->SetTitle("");
 
-            num->GetXaxis()->SetLabelFont(43); //font in pixels
-            num->GetXaxis()->SetLabelSize(ratio_label_font_size); //in pixels
-            num->GetXaxis()->SetTitleFont(43); //font in pixels
-            num->GetXaxis()->SetTitleSize(ratio_label_font_size); //in pixels
-            num->GetXaxis()->SetTitleOffset(-1.2); //in pixels
+            num->GetXaxis()->SetLabelFont(42);
+            num->GetXaxis()->SetLabelSize(ratio_label_font_size);
+            num->GetXaxis()->SetTitleFont(42);
+            num->GetXaxis()->SetTitleSize(ratio_label_font_size);
+            num->GetXaxis()->SetTitleOffset(-1.2);
 
-            num->GetYaxis()->SetRangeUser(0.2, 1.8);
-            num->GetYaxis()->SetTitle(""); //font in pixels
-            num->GetYaxis()->SetLabelFont(43); //font in pixels
-            num->GetYaxis()->SetLabelSize(ratio_label_font_size); //in pixels
-            if (first_plot)
-            {
-              first_plot = false;
-              num->Draw("epl");
-            }
-            else
-              num->Draw("same epl");
+            computeMinAndMaxForEfficiency(num, RATIO_MIN, RATIO_MAX,
+                                          ratio_min, ratio_max);
+            num->GetYaxis()->SetTitle("");
+            num->GetYaxis()->SetLabelFont(42);
+            num->GetYaxis()->SetLabelSize(ratio_label_font_size);
+
+            TH1 * ratio_shadow_error_range = dynamic_cast<TH1 *>(num->Clone());
+            nukem.push_back(ratio_shadow_error_range);
+            ratio_shadow_error_range->SetFillStyle(3001);
+            ratio_shadow_error_range->SetFillColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetLineColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetMarkerColor(TColor::GetColorTransparent(colors[n%colorIndex], 0.3));
+            ratio_shadow_error_range->SetMarkerSize(0);
+            for (int bin = 1; bin < ratio_shadow_error_range->GetNbinsX(); ++bin)
+              ratio_shadow_error_range->SetBinContent(bin, 1.0);
+          }
+        }
+      }
+
+      // Finally do the actual drawing, not that all limits have been
+      // globally computed across all references.
+
+      // We need some further checking on the limits here. If the
+      // ratio-plot is empty, the minimum value is set to RATIO_MAX
+      // and the maximum value is correctly set to 0. We arbirarily
+      // set the minimum to RATIO_MIN and the maximum to be
+      // RATIO_MAX. We generically check this condition by requiring
+      // that the maximum found is lower than the minimum.
+      if (ratio_max <= ratio_min) {
+        if (ratio_min == 1) {
+          ratio_min = 0.2;
+          ratio_max = 1.8;
+        } else {
+          ratio_min = RATIO_MIN;
+          ratio_max = RATIO_MAX;
+        }
+      }
+      for (size_t histo = histograms_to_be_drawn; histo < nukem.size(); ++histo) {
+        TH1 * to_draw = dynamic_cast<TH1 *>(nukem[histo]);
+        to_draw->GetYaxis()->SetRangeUser(ratio_min, ratio_max);
+        if (histo == histograms_to_be_drawn) {
+          to_draw->Draw("epl");
+        } else {
+          if (to_draw->GetMarkerSize() == 0) {
+            to_draw->Draw("same e2");
+          } else {
+            to_draw->Draw("same epl");
           }
         }
       }
     }
-
     c.cd();
   }
 
@@ -1592,6 +1758,11 @@ private:
   {
     std::string samePlotOptions("same p");
     TObject *ob = objs[0].object;
+    TH1 * h = dynamic_cast<TH1 *>(ob);
+    bool isMultiDimensional = dynamic_cast<TH2*>(ob) ? 1 : 0;
+    isMultiDimensional |= dynamic_cast<TH3 *>(ob) ? 1 : 0;
+    float max_value_in_Y = std::numeric_limits<float>::lowest();
+
     // Handle text.
     if (TObjString *os = dynamic_cast<TObjString *>(ob))
     {
@@ -1603,46 +1774,44 @@ private:
       ob = t;
     }
 
-    double xmin = NAN, xmax = NAN;
-    double ymin = NAN, ymax = NAN;
-    double zmin = NAN, zmax = NAN;
-    // If we have an object that has axes, apply the requested params.
-    // Set only the bounds that were specified, and leave the rest to
-    // the natural range.  Unset bounds have NaN as their value.
-    if (TH1 *h = dynamic_cast<TH1 *>(ob))
+    // The logic to account for possible user-supplied ranges
+    // (especially in Y) and the automatic selection of the best Y
+    // range in case of overlaid histograms is rather tricky. As a
+    // final solution, the values supplied by the user (if any) are
+    // applied *last*, so that they will prevail over the automatic
+    // algorithm. Plots that have been labelled as efficiency plots
+    // do not even enter this rescaling algorithm
+
+    // Maybe draw overlay from reference and other objects.
+    if (h)
     {
-      if (TAxis *a = h->GetXaxis())
+      max_value_in_Y = h->GetMaximum();
+      float norm = h->GetSumOfWeights();
+      if (i.refnorm != "False"
+          && norm > 0
+          && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT)
+          && !isMultiDimensional)
       {
-        if (! (isnan(i.xaxis.min) && isnan(i.xaxis.max)))
+        for (size_t n = 0; n < numobjs; ++n)
         {
-          xmin = a->GetXmin();
-          xmax = a->GetXmax();
-          a->SetRangeUser(isnan(i.xaxis.min) ? xmin : i.xaxis.min,
-                          isnan(i.xaxis.max) ? xmax : i.xaxis.max);
+          TObject *refobj = 0;
+          if (n == 0)
+            refobj = objs[0].reference;
+          else if (n > 0)
+            refobj = objs[n].object;
+          TH1F *ref1 = dynamic_cast<TH1F *>(refobj);
+          if (ref1) {
+            float den = ref1->GetSumOfWeights();
+            if (den > 0)
+              max_value_in_Y = max_value_in_Y > ref1->GetMaximum()*norm/den
+                  ? max_value_in_Y : ref1->GetMaximum()*norm/den;
+          }
+        }
+        if (max_value_in_Y > 0 && numobjs > 1) {
+          h->SetMaximum(max_value_in_Y*1.05);
         }
       }
-
-      if (TAxis *a = h->GetYaxis())
-      {
-        if (! (isnan(i.yaxis.min) && isnan(i.yaxis.max)))
-        {
-          ymin = a->GetXmin();
-          ymax = a->GetXmax();
-          a->SetRangeUser(isnan(i.yaxis.min) ? ymin : i.yaxis.min,
-                          isnan(i.yaxis.max) ? ymax : i.yaxis.max);
-        }
-      }
-
-      if (TAxis *a = h->GetZaxis())
-      {
-        if (! (isnan(i.zaxis.min) && isnan(i.zaxis.max)))
-        {
-          zmin = a->GetXmin();
-          zmax = a->GetXmax();
-          a->SetRangeUser(isnan(i.zaxis.min) ? zmin : i.zaxis.min,
-                          isnan(i.zaxis.max) ? zmax : i.zaxis.max);
-        }
-      }
+      applyUserRange(h, i);
       // Increase lineWidth in case there are other objects to
       // draw on top of the main one.
       if (numobjs > 1)
@@ -1669,48 +1838,48 @@ private:
       else if (n > 0)
         refobj = objs[n].object;
 
-      TH1F *ref1f = dynamic_cast<TH1F *>(refobj);
-      TH1D *ref1d = dynamic_cast<TH1D *>(refobj);
+      TH1 *ref1 = dynamic_cast<TH1 *>(refobj);
       TProfile *refp = dynamic_cast<TProfile *>(refobj);
+      TH2 *ref2d = dynamic_cast<TH2 *>(refobj);
+      TH3 *ref3d = dynamic_cast<TH3 *>(refobj);
       if (refp)
       {
         refp->SetLineColor(colors[n%colorIndex]);
-        refp->SetLineWidth(0);
+        refp->SetLineWidth(2);
         refp->GetListOfFunctions()->Delete();
         refp->Draw("same hist");
       }
-      else if (ref1f || ref1d)
+      // No point in even trying to overlay 2D or 3D histograms in the
+      // same canvas. Bail out w/o complaints.
+      else if (ref2d || ref3d) {
+        return;
+      }
+      else if (ref1)
       {
         // Perform KS statistical test only on the first available
         // reference, excluding the (possible) default one
         // injected during the harvesting step.
         int color = colors[n%colorIndex];
         double norm = 1.;
-        if (TH1F *th1f = dynamic_cast<TH1F *>(ob))
-          norm = th1f->GetSumOfWeights();
-        else if (TH1D *th1d = dynamic_cast<TH1D *>(ob))
-          norm = th1d->GetSumOfWeights();
+        if (h)
+          norm = h->GetSumOfWeights();
 
-        TH1 *ref = (ref1f
-                    ? static_cast<TH1 *>(ref1f)
-                    : static_cast<TH1 *>(ref1d));
-        if (n==1 && ! isnan(i.ktest))
+        if (n==1 && (! isnan(i.ktest))
+            && h && norm
+            && ref1 && ref1->GetSumOfWeights())
         {
-          if (TH1 *h = dynamic_cast<TH1 *>(ob))
-          {
-            double prob = h->KolmogorovTest(ref);
-            color = prob < i.ktest ? kRed-4 : kGreen-3;
-            char buffer[14];
-            snprintf(buffer, 14, "%6.5f", prob);
-            TText t;
-            t.SetTextColor(color);
-            t.DrawTextNDC(0.45, 0.9, buffer);
-          }
+          double prob = h->KolmogorovTest(ref1);
+          color = prob < i.ktest ? kRed-4 : kGreen-3;
+          char buffer[14];
+          snprintf(buffer, 14, "%6.5f", prob);
+          TText t;
+          t.SetTextColor(color);
+          t.DrawTextNDC(0.45, 0.9, buffer);
         }
 
-        ref->SetLineColor(color); ref->SetMarkerColor(color);
-        ref->SetMarkerStyle(kFullDotLarge); ref->SetMarkerSize(0.85);
-        ref->GetListOfFunctions()->Delete();
+        ref1->SetLineColor(color); ref1->SetMarkerColor(color);
+        ref1->SetMarkerStyle(kStar); ref1->SetMarkerSize(0.85);
+        ref1->GetListOfFunctions()->Delete();
         if (i.showerrbars)
           samePlotOptions += " e1 x0";
 
@@ -1718,15 +1887,25 @@ private:
         // efficieny plot at production time: if this is the case,
         // then avoid any kind of normalization that introduces
         // fake effects.
-        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT))
-          nukem.push_back(ref->DrawNormalized(samePlotOptions.c_str(), norm));
-        else
-          ref->Draw(samePlotOptions.c_str());
+        // Also, if the option norm=False has been supplied, avoid
+        // doing any normalization.
+        if (norm && !(objs[0].flags & VisDQMIndex::SUMMARY_PROP_EFFICIENCY_PLOT) &&
+            i.refnorm != "False") {
+          if (ref1->GetSumOfWeights())
+            nukem.push_back(ref1->DrawNormalized(samePlotOptions.c_str(), norm));
+        } else {
+          ref1->Draw(samePlotOptions.c_str());
+        }
 
-        if (i.showstats)
-          drawReferenceStatBox(i, n, ref, color, objs[n].name, nukem);
+        if (i.showstats) {
+          // Apply user-defined ranges also to reference histograms, so
+          // that the shown statistics is consistent with the one of the
+          // main plot.
+          applyUserRange(ref1, i);
+          drawReferenceStatBox(i, n, ref1, color, objs[n].name, nukem);
+        }
       }
-    }
+    } // End of loop over all reference sample
   }
 
   // ----------------------------------------------------------------------
@@ -1831,13 +2010,6 @@ private:
         doRenderMsg(o.name, "blacklisted for crashing ROOT", c, nukem);
       }
 
-      // If the stats are bad avoid drawing it, ROOT destabilises.
-      else if (unsafe)
-      {
-        Color_t c = TColor::GetColor(178, 32, 32);
-        doRenderMsg(o.name, "not shown due to NaNs", c, nukem);
-      }
-
       // It's there and wasn't black-listed, paint it.
       else
       {
@@ -1852,6 +2024,13 @@ private:
             break;
           default:
             doRenderOrdinary(c, i, objs, numobjs, ri, nukem);
+        }
+
+        // If the stats are bad draw alert on top.
+        if (unsafe)
+        {
+          Color_t c = TColor::GetColor(178, 32, 32);
+          doRenderMsg(o.name, "NaNs", c, nukem);
         }
       }
 

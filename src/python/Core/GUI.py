@@ -7,30 +7,26 @@
 # interpreter yields the lock only every N byte code instructions;
 # this server configures a large N (1'000'000).
 
+from importlib import import_module
+from imp import get_suffixes
 from copy import deepcopy
 from cgi import escape
 from socket import gethostname
 from threading import Thread, Lock
-from cherrypy import expose, HTTPError, request, response, engine, log
+from cherrypy import expose, HTTPError, request, response, engine, log, tools, Tool
 from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo
+from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, ParameterManager
 from cStringIO import StringIO
 from stat import *
 from jsmin import jsmin
 import cPickle as pickle
 import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
+import json, cjson, httplib, base64
 
 _SESSION_REDIRECT = ("<html><head><script>location.replace('%s')</script></head>"
                      + "<body><noscript>Please enable JavaScript to use this"
                      + " service</noscript></body></html>")
-
-def import_module(name):
-  mod = __import__(name)
-  for part in name.split('.')[1:]:
-    mod = getattr(mod, part, None)
-    if not mod: break
-  return mod
 
 def extension(modules, what, *args):
   for m in modules:
@@ -123,7 +119,9 @@ class SessionThread(Thread):
       time.sleep(1)
 
 # -------------------------------------------------------------------
+tools.params = ParameterManager()
 class Server:
+
   """The main server process, a CherryPy actor mounted to the URL tree.
   The basic server core orchestrates basic services such as session
   management, templates, static content and switching workspaces.
@@ -232,6 +230,7 @@ class Server:
     self._yui   = os.getenv("YUI_ROOT") + "/build"
     self._extjs = os.getenv("EXTJS_ROOT")
     self._d3    = os.getenv("D3_ROOT")
+    self._jsroot = os.getenv("ROOTJS_ROOT")
     self._addCSSFragment("%s/css/Core/style.css" % self.contentpath)
     self._addJSFragment("%s/yahoo/yahoo.js" % self._yui)
     self._addJSFragment("%s/event/event.js" % self._yui)
@@ -263,11 +262,24 @@ class Server:
            and name.rsplit(".", 1)[-1][0].isupper())
           or name == "__main__") \
 	 and m and m.__dict__.has_key('__file__'):
-        self._addChecksum(name,
-			  inspect.getsourcefile(m) \
-			  or inspect.getabsfile(m)
-			  or name,
-			  inspect.getsource(m))
+        processed = False
+        # Check if the module is a binary module, since this needs a
+        # special handling in python 2.7 (due to buggy handling of
+        # binary modules and the inspect module )
+        for suffix, mode, kind in get_suffixes():
+          source = inspect.getabsfile(m)
+          if 'b' in mode and source.lower()[-len(suffix):] == suffix:
+            if os.path.exists(source) and os.stat(source):
+              data = open(source, 'rb').read()
+              self._addChecksum(name, source, data)
+              processed = True
+              break
+        if not processed:
+            self._addChecksum(name,
+                              inspect.getsourcefile(m) \
+                              or inspect.getabsfile(m)
+                              or name,
+                              inspect.getsource(m))
 
     self.sessionthread.start()
     engine.subscribe('stop', self.sessionthread.stop)
@@ -294,7 +306,6 @@ class Server:
       fileinfo[2] = open(fileinfo[0]).read()
     self.lock.release()
     return fileinfo[2]
-
   def _templatePage(self, name, variables):
     """Generate HTML page from cheetah template and variables."""
     template = self._maybeRefreshFile(self.templates, name)
@@ -472,19 +483,22 @@ class Server:
   # Server access points.
 
   @expose
+  @tools.params()
   def index(self):
     """Main root index address: the landing address.  Create a new
     session and redirect the client there."""
     return self.start(workspace = self.workspaces[0].name);
 
   @expose
+  @tools.params()
   def static(self, *args, **kwargs):
     """Access our own static content."""
-    if len(args) != 1 or not re.match(r"^[-a-z]+\.(png|gif)$", args[0]):
+    if len(args) != 1 or not re.match(r"^[-a-z_]+\.(png|gif|svg)$", args[0]):
       return self._invalidURL()
     return serve_file(self.contentpath + '/images/' + args[0])
 
   @expose
+  @tools.params()
   def yui(self, *args, **kwargs):
     """Access YUI static content."""
     path = "/".join(args)
@@ -493,6 +507,7 @@ class Server:
     return serve_file(self._yui + '/' + path)
 
   @expose
+  @tools.params()
   def extjs(self, *args, **kwargs):
     """Access ExtJS static content."""
     path = "/".join(args)
@@ -501,6 +516,16 @@ class Server:
     return serve_file(self._extjs + '/' + path)
 
   @expose
+  @tools.params()
+  def jsroot(self, *args, **kwargs):
+    """Access JSROOT static content."""
+    path = "/".join(args)
+    if not (self._jsroot):
+      return self._invalidURL()
+    return serve_file(self._jsroot + '/' + path)
+
+  @expose
+  @tools.params()
   def d3(self, *args, **kwargs):
     """Access D3 static content."""
     path = "/".join(args)
@@ -510,6 +535,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def start(self, *args, **kwargs):
     """Jump to some content.  This creates and configures a new session with
     the desired content, as if a sequence of actions was carried out.
@@ -534,6 +560,7 @@ class Server:
     return _SESSION_REDIRECT % (self.baseUrl + "/session/" + sessionid)
 
   @expose
+  @tools.params()
   def workspace(self, *args, **kwargs):
     """Backward compatible version of 'start' which understands one
     parameter, the name of the workspace to begin in.  Note that
@@ -543,9 +570,30 @@ class Server:
       return self.start(workspace = self._workspace(args[0]).name)
     else:
       return self.start(workspace = self.workspaces[0].name)
+# -----------------------------------------------------------------
+  @expose
+  @tools.params()
+  def jsrootfairy(self, *args, **kwargs):
+    try:
+      if len(args) >= 1:
+          for s in self.sources:
+            if getattr(s, 'jsonhook', None) == args[0]:
+              kwargs['jsroot'] = 'true'
+              data = s.getJson(*args[1:], **kwargs)
+              return data
+    except Exception, e:
+      o = StringIO()
+      traceback.print_exc(file=o)
+      log("WARNING: unable to produce JSROOT json: "
+          + (str(e) + "\n" + o.getvalue()).replace("\n", " ~~ "),
+          severity=logging.WARNING)
+
+    self._noResponseCaching()
+    return str(e);
 
 # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def jsonfairy(self, *args, **kwargs):
     """General session-independent access path for json representation
     of plot. The first subdirectory argument contains the name of the
@@ -553,7 +601,6 @@ class Server:
     value of argument 'formatted' = true insread of pure JSON whole
     HTML page is returned.  The rest of the processing is given over
     to the hook."""
-
     try:
       if len(args) >= 1:
         for s in self.sources:
@@ -582,6 +629,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def plotfairy(self, *args, **kwargs):
     """General session-independent access path for dynamic images.
     The first subdirectory argument contains the name of the
@@ -611,6 +659,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def digest(self, *args, **kwargs):
     """Report code running in this server."""
     maxsize = max(len(str(i['srclen'])) for i in self.checksums) + 1
@@ -629,6 +678,7 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
   def authenticate(self, *args, **kwargs):
     """A hook for authenticating users.  We don't actually authenticate
     anyone here, all the authentication is done in the front-end
@@ -639,6 +689,8 @@ class Server:
 
   # -----------------------------------------------------------------
   @expose
+  @tools.params()
+  @tools.gzip()
   def session(self, *args, **kwargs):
     """Main session address.  All AJAX calls to the session land here.
     The URL is of the form "[/ROOT]/session/ID[/METHOD].  We check
@@ -684,6 +736,32 @@ class Server:
       return method(session, *args, **kwargs)
     finally:
       self._releaseSession(session)
+
+  # -----------------------------------------------------------------
+  @expose
+  @tools.params()
+  def urlshortener(self, *args, **kwargs):
+    if (not 'url' in kwargs.keys()):
+      return '{}'
+
+    longUrl = base64.b64decode(kwargs['url'])
+    shortUrl = longUrl
+
+    try:
+      connection = httplib.HTTPSConnection('tinyurl.com')
+      connection.request('GET', '/api-create.php?url=%s' % longUrl)
+      response = connection.getresponse()
+
+      if (response.status == 200):
+        shortUrl = response.read()
+      else:
+        log("WARNING: urlshortener returned status: %s for url: %s" % (response.status, longUrl), severity=logging.WARNING)
+      
+      connection.close()
+    except:
+      log("WARNING: unable to shorten URL: %s" % longUrl, severity=logging.WARNING)
+    
+    return '{"id": "%s"}' % shortUrl
 
   def sessionIndex(self, session, *args ,**kwargs):
     """Generate top level session index.  This produces the main GUI web

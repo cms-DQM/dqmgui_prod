@@ -4,6 +4,7 @@
 #include "classlib/utils/StringFormat.h"
 #include "boost/algorithm/string.hpp"
 #include "TProfile2D.h"
+#include "TBufferJSON.h"
 
 using lat::StringFormat;
 using std::string;
@@ -16,6 +17,8 @@ static void replacePseudoNumericValues(string& json)
   boost::replace_all(json, "':inf}", "':'inf'}");
   boost::replace_all(json, "':-inf,", "':'-inf',");
   boost::replace_all(json, "':-inf}", "':'-inf'}");
+  boost::replace_all(json, ",inf", ",'inf'");
+  boost::replace_all(json, ",-inf", ",'-inf'");
 }
 
 static string arrayToJson(const string arrayString, const char* const name = NULL)
@@ -35,22 +38,22 @@ static string arrayToJson(const string arrayString, const char* const name = NUL
 }
 
 
-static string integralToJson(Double_t** integral )
+static string integralToJson(Double_t integral[][3] )
 {
   return StringFormat("'integral':["
                       "[%7,%8,%9],"
                       "[%4,%5,%6],"
                       "[%1,%2,%3]"
                       "]")
-      .arg(integral[0][0], 0, 'f')
-      .arg(integral[0][1], 0, 'f')
-      .arg(integral[0][2], 0, 'f')
-      .arg(integral[1][0], 0, 'f')
-      .arg(integral[1][1], 0, 'f')
-      .arg(integral[1][2], 0, 'f')
-      .arg(integral[2][0], 0, 'f')
-      .arg(integral[2][1], 0, 'f')
-      .arg(integral[2][2], 0, 'f');
+      .arg(integral[0][0], 0, 'g')
+      .arg(integral[0][1], 0, 'g')
+      .arg(integral[0][2], 0, 'g')
+      .arg(integral[1][0], 0, 'g')
+      .arg(integral[1][1], 0, 'g')
+      .arg(integral[1][2], 0, 'g')
+      .arg(integral[2][0], 0, 'g')
+      .arg(integral[2][1], 0, 'g')
+      .arg(integral[2][2], 0, 'g');
 }
 
 /* The following methods return a json containing all bins data and due
@@ -72,7 +75,7 @@ static string binsToArray(const TH1* const h)
       isWidthDef = false;
     sum += h->GetBinContent(i);
     contentList += StringFormat("%1,")
-        .arg(h->GetBinContent(i));
+        .arg((double)h->GetBinContent(i), 14, 'g', 11);
     widthList += StringFormat("%1,")
         .arg(h->GetXaxis()->GetBinWidth(i));
     errorList += StringFormat("%1,")
@@ -93,10 +96,8 @@ static string binsToArray(const TH2* const h)
   string content = "";
   string widthX  = "";
   string widthY  = "";
-  Double_t** sum = new double*[2];
-  sum[0] = new double[2];
-  sum[1] = new double[2];
-  sum[2] = new double[2];
+  Double_t sum[3][3];
+  bzero((void *)sum, 9*sizeof(Double_t));
   const Int_t Xlast = h->GetXaxis()->GetLast(), Ylast = h->GetYaxis()->GetLast();
   /** Naming conventions:
       ux - underflow X, uy = underflow Y
@@ -122,7 +123,7 @@ static string binsToArray(const TH2* const h)
   {
     sum[1][0] += h->GetBinContent(i, 0);  // sum(1..Xlast) uy
     sum[1][2] += h->GetBinContent(i, Ylast + 1);  // sum(1..Xlast) oy
-    widthX += StringFormat("%3,").arg(h->GetXaxis()->GetBinWidth(i));
+    widthX += StringFormat("%1,").arg(h->GetXaxis()->GetBinWidth(i));
     if(isWidthXDef && (h->GetXaxis()->GetBinWidth(i) != defWidthX))
       isWidthXDef = false;
   }
@@ -132,14 +133,14 @@ static string binsToArray(const TH2* const h)
     string subcontent = "";
     sum[0][1] += h->GetBinContent(0, j);        // sum(1..Ylast) ux
     sum[2][1] += h->GetBinContent(Xlast + 1, j); // sum(1..Ylast) ox
-    widthY += StringFormat("%3,").arg(h->GetYaxis()->GetBinWidth(j));
+    widthY += StringFormat("%1,").arg(h->GetYaxis()->GetBinWidth(j));
     if(isWidthYDef && (h->GetYaxis()->GetBinWidth(j) != defWidthY))
       isWidthYDef = false;
     for (int i = h->GetXaxis()->GetFirst(); i != Xlast + 1; ++i)
     {
       const Double_t binValue = h->GetBinContent(i, j);
       sum[1][1]  += binValue;  //integral
-      subcontent += StringFormat("%3,").arg(binValue);
+      subcontent += StringFormat("%1,").arg(binValue);
     }
     content += arrayToJson(subcontent) + ",";
   }
@@ -248,22 +249,87 @@ static string statWithErrorToJson(const TH1* const hist, const char* const name)
       "'value':%1"
       ",'error':%2"
       "}";
-  if (strcmp(name,"mean") == 0)
+  if (strcmp(name,"mean") == 0) {
+    if (std::isfinite(hist->GetMean(X)) && std::isfinite(hist->GetMeanError(X)))
+      return StringFormat(format)
+          .arg(hist->GetMean(X))
+          .arg(hist->GetMeanError(X_ERROR));
+    if (!std::isfinite(hist->GetMean(X))) {
+      if (!std::isfinite(hist->GetMeanError(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetMeanError(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetMean(X))
-        .arg(hist->GetMeanError(X));
-  if (strcmp(name,"rms") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"rms") == 0) {
+    if (std::isfinite(hist->GetRMS(X)) && std::isfinite(hist->GetRMSError(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetRMS(X))
+          .arg(hist->GetRMSError(X_ERROR));
+    if (!std::isfinite(hist->GetRMS(X))) {
+      if (!std::isfinite(hist->GetRMSError(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetRMSError(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetRMS(X))
-        .arg(hist->GetRMSError(X));
-  if (strcmp(name,"kurtosis") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"kurtosis") == 0) {
+    if (std::isfinite(hist->GetKurtosis(X)) && std::isfinite(hist->GetKurtosis(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetKurtosis(X))
+          .arg(hist->GetKurtosis(X_ERROR));
+    if (!std::isfinite(hist->GetKurtosis(X))) {
+      if (!std::isfinite(hist->GetKurtosis(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetKurtosis(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetKurtosis(X))
-        .arg(hist->GetKurtosis(X_ERROR));
-  if (strcmp(name,"skewness") == 0)
+        .arg("'NaN");
+  }
+  if (strcmp(name,"skewness") == 0) {
+    if (std::isfinite(hist->GetSkewness(X)) && std::isfinite(hist->GetSkewness(X_ERROR)))
+      return StringFormat(format)
+          .arg(hist->GetSkewness(X))
+          .arg(hist->GetSkewness(X_ERROR));
+    if (!std::isfinite(hist->GetSkewness(X))) {
+      if (!std::isfinite(hist->GetSkewness(X_ERROR))) {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg("'NaN");
+      } else {
+        return StringFormat(format)
+            .arg("'NaN'")
+            .arg(hist->GetSkewness(X_ERROR));
+      }
+    }
     return StringFormat(format)
         .arg(hist->GetSkewness(X))
-        .arg(hist->GetSkewness(X_ERROR));
+        .arg("'NaN");
+  }
+
   // name not recognized
   return StringFormat("'%1':'has not been recognised'")
       .arg(name);
@@ -310,6 +376,11 @@ static string statWithErrorToJson(const TH2* const hist, const char* const name)
       .arg(name);
 }
 
+static string rootObjectToJson(const TObject* const h)
+{
+  return TBufferJSON::ConvertToJSON(h).Data();
+}
+
 template<typename T>
 static string statsToJson(const T* const hist)
 {
@@ -322,7 +393,7 @@ static string statsToJson(const T* const hist)
                          ",'underflow':%5"
                          ",'overflow':%6")
       .arg(hist->GetName())
-      .arg(hist->GetEntries(),0,'f')
+      .arg(hist->GetEntries(), 0, 'f')
       .arg(statWithErrorToJson(hist, "mean"))
       .arg(statWithErrorToJson(hist, "rms"))
       .arg(hist->GetBinContent(0))

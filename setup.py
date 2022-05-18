@@ -12,7 +12,8 @@ systems = \
     'h':      ['DQM/*.h', 'DQM/DQMCollector.cc', 'DQM/MonitorElement.cc',
                'DQM/DQMNet.cc', 'DQM/DQMError.cc', 'DQM/DQMStore.cc',
                'DQM/QTest.cc', 'DQM/QReport.cc', 'DQM/QStatisticalTests.cc',
-               'boost/*/*/*/*.hpp', 'rtgu/i*/*.hpp', 'rtgu/i*/*/*.hpp'],
+               'DQM/*proto', 'boost/*/*/*/*.hpp', 'rtgu/i*/*.hpp',
+               'rtgu/i*/*/*.hpp'],
     'cpp':    [('bin', 'visDQM*'),
 	       ('bin', 'DQMCollector'),
 	       ('lib', 'libDQMGUI.so'),
@@ -106,9 +107,11 @@ class BuildCommand(Command):
     "\t\t   ensure a clean build of only the requested parts.\n"
   user_options = build.user_options
   user_options.append(('system=', 's', 'build the specified system'))
+  user_options.append(('builddocs', 'd', 'build documentation with sphinx'))
 
   def initialize_options(self):
     self.system = None
+    self.builddocs = False
 
   def finalize_options(self):
     # Check options.
@@ -137,7 +140,8 @@ class BuildCommand(Command):
     cmd.force = self.force
     cmd.ensure_finalized()
     cmd.run()
-    self.generate_docs()
+    if self.builddocs:
+      self.generate_docs()
     self.distribution.have_run[command] = 1
 
 class InstallCommand(install):
@@ -201,4 +205,5 @@ setup(name = 'dqmgui',
       maintainer_email = 'hn-cms-dqmDevel@cern.ch',
       cmdclass = { 'build_system': BuildCommand,
                    'install_system': InstallCommand },
-      package_dir = { 'Monitoring': 'src/python' })
+      package_dir = { 'Monitoring': 'src/python' },
+      requires=['requests'])
