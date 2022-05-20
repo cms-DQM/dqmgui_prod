@@ -935,46 +935,24 @@ static void objectToJSON(const std::string &name, const std::string &path,
                    ? "INVALID"
                    : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR" : "ROOT")
           .arg(
-              type == DQMNet::DQM_PROP_TYPE_INT
-                  ? "INT"
-                  : type == DQMNet::DQM_PROP_TYPE_REAL
-                        ? "REAL"
-                        : type == DQMNet::DQM_PROP_TYPE_STRING
-                              ? "STRING"
-                              : type == DQMNet::DQM_PROP_TYPE_TH1F
-                                    ? "TH1F"
-                                    : type == DQMNet::DQM_PROP_TYPE_TH1S
-                                          ? "TH1S"
-                                          : type == DQMNet::DQM_PROP_TYPE_TH1D
-                                                ? "TH1D"
-                                                : type == DQMNet::
-                                                              DQM_PROP_TYPE_TH2F
-                                                      ? "TH2F"
-                                                      : type == DQMNet::
-                                                                    DQM_PROP_TYPE_TH2S
-                                                            ? "TH2S"
-                                                            : type == DQMNet::
-                                                                          DQM_PROP_TYPE_TH2D
-                                                                  ? "TH2D"
-                                                                  : type == DQMNet::
-                                                                                DQM_PROP_TYPE_TH3F
-                                                                        ? "TH3F"
-                                                                        : type == DQMNet::
-                                                                                      DQM_PROP_TYPE_TH3S
-                                                                              ? "TH3S"
-                                                                              : type == DQMNet::
-                                                                                            DQM_PROP_TYPE_TH3D
-                                                                                    ? "TH3D"
-                                                                                    : type == DQMNet::
-                                                                                                  DQM_PROP_TYPE_TPROF
-                                                                                          ? "TPROF"
-                                                                                          : type == DQMNet::
-                                                                                                        DQM_PROP_TYPE_TPROF2D
-                                                                                                ? "TPROF2D"
-                                                                                                : type == DQMNet::
-                                                                                                              DQM_PROP_TYPE_DATABLOB
-                                                                                                      ? "DATABLOB"
-                                                                                                      : "OTHER")
+              type == DQMNet::DQM_PROP_TYPE_INT ? "INT"
+                  : type == DQMNet::DQM_PROP_TYPE_REAL ? "REAL"
+                        : type == DQMNet::DQM_PROP_TYPE_STRING ? "STRING"
+                              : type == DQMNet::DQM_PROP_TYPE_TH1F ? "TH1F"
+                                    : type == DQMNet::DQM_PROP_TYPE_TH1S ? "TH1S"
+                                          : type == DQMNet::DQM_PROP_TYPE_TH1D ? "TH1D"
+                                              : type == DQMNet::DQM_PROP_TYPE_TH1I ? "TH1I"
+                                                   : type == DQMNet::DQM_PROP_TYPE_TH2F ? "TH2F"
+                                                      : type == DQMNet::DQM_PROP_TYPE_TH2S ? "TH2S"
+                                                              : type == DQMNet::DQM_PROP_TYPE_TH2I ? "TH2I"
+                                                                    : type == DQMNet::DQM_PROP_TYPE_TH2D ? "TH2D"
+                                                                        : type == DQMNet::DQM_PROP_TYPE_TH3F ? "TH3F"
+                                                                              : type == DQMNet::DQM_PROP_TYPE_TH3S ? "TH3S"
+                                                                                    : type == DQMNet::DQM_PROP_TYPE_TH3D ? "TH3D"
+                                                                                          : type == DQMNet::DQM_PROP_TYPE_TPROF ? "TPROF"
+                                                                                                : type == DQMNet::DQM_PROP_TYPE_TPROF2D ? "TPROF2D"
+                                                                                                      : type == DQMNet::DQM_PROP_TYPE_DATABLOB ? "DATABLOB"
+                                                                                                            : "OTHER")
           .arg((unsigned long)lumisect)
           .arg((report & DQMNet::DQM_PROP_REPORT_ALARM) ? 1 : 0)
           .arg((report & DQMNet::DQM_PROP_REPORT_ERROR) ? 1 : 0)
