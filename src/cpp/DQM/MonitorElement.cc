@@ -41,6 +41,8 @@ MonitorElement::initialise(Kind kind)
   case DQM_KIND_STRING:
   case DQM_KIND_TH1F:
   case DQM_KIND_TH1S:
+  case DQM_KIND_TH1I:
+  case DQM_KIND_TH2I:
   case DQM_KIND_TH1D:
   case DQM_KIND_TH2F:
   case DQM_KIND_TH2S:
@@ -75,6 +77,18 @@ MonitorElement::initialise(Kind kind, TH1 *rootobj)
   case DQM_KIND_TH1S:
     assert(dynamic_cast<TH1S *>(rootobj));
     assert(! reference_ || dynamic_cast<TH1S *>(reference_));
+    object_ = rootobj;
+    break;
+
+  case DQM_KIND_TH1I:
+    assert(dynamic_cast<TH1I *>(rootobj));
+    assert(! reference_ || dynamic_cast<TH1I *>(reference_));
+    object_ = rootobj;
+    break;
+
+  case DQM_KIND_TH2I:
+    assert(dynamic_cast<TH2I *>(rootobj));
+    assert(! reference_ || dynamic_cast<TH2I *>(reference_));
     object_ = rootobj;
     break;
 
@@ -270,9 +284,8 @@ MonitorElement::Fill(double x)
   else if (kind() == DQM_KIND_TH1F)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(x, 1);
-  else if (kind() == DQM_KIND_TH1S)
-    accessRootObject(__PRETTY_FUNCTION__, 1)
-      ->Fill(x, 1);
+  else if (kind() == DQM_KIND_TH1S) accessRootObject(__PRETTY_FUNCTION__, 1) ->Fill(x, 1);
+  else if (kind() == DQM_KIND_TH1I) accessRootObject(__PRETTY_FUNCTION__, 1) ->Fill(x, 1);
   else if (kind() == DQM_KIND_TH1D)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(x, 1);
@@ -292,9 +305,8 @@ MonitorElement::doFill(int64_t x)
   else if (kind() == DQM_KIND_TH1F)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(static_cast<double>(x), 1);
-  else if (kind() == DQM_KIND_TH1S)
-    accessRootObject(__PRETTY_FUNCTION__, 1)
-      ->Fill(static_cast<double>(x), 1);
+  else if (kind() == DQM_KIND_TH1S) accessRootObject(__PRETTY_FUNCTION__, 1)->Fill(static_cast<double>(x), 1);
+  else if (kind() == DQM_KIND_TH1I) accessRootObject(__PRETTY_FUNCTION__, 1)->Fill(static_cast<double>(x), 1);
   else if (kind() == DQM_KIND_TH1D)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(static_cast<double>(x), 1);
@@ -310,9 +322,8 @@ MonitorElement::Fill(double x, double yw)
   if (kind() == DQM_KIND_TH1F)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(x, yw);
-  else if (kind() == DQM_KIND_TH1S)
-    accessRootObject(__PRETTY_FUNCTION__, 1)
-      ->Fill(x, yw);
+  else if (kind() == DQM_KIND_TH1S) accessRootObject(__PRETTY_FUNCTION__, 1)->Fill(x, yw);
+  else if (kind() == DQM_KIND_TH1I) accessRootObject(__PRETTY_FUNCTION__, 1)->Fill(x, yw);
   else if (kind() == DQM_KIND_TH1D)
     accessRootObject(__PRETTY_FUNCTION__, 1)
       ->Fill(x, yw);
@@ -322,9 +333,8 @@ MonitorElement::Fill(double x, double yw)
   else if (kind() == DQM_KIND_TH2S)
     static_cast<TH2S *>(accessRootObject(__PRETTY_FUNCTION__, 2))
       ->Fill(x, yw, 1);
-  else if (kind() == DQM_KIND_TH2D)
-    static_cast<TH2D *>(accessRootObject(__PRETTY_FUNCTION__, 2))
-      ->Fill(x, yw, 1);
+  else if (kind() == DQM_KIND_TH2D) static_cast<TH2D *>(accessRootObject(__PRETTY_FUNCTION__, 2))->Fill(x, yw, 1);
+  else if (kind() == DQM_KIND_TH2I) static_cast<TH2I *>(accessRootObject(__PRETTY_FUNCTION__, 2))->Fill(x, yw, 1);
   else if (kind() == DQM_KIND_TPROFILE)
     static_cast<TProfile *>(accessRootObject(__PRETTY_FUNCTION__, 1))
       ->Fill(x, yw, 1);
@@ -341,7 +351,7 @@ MonitorElement::ShiftFillLast(double y, double ye, int xscale)
   update();
   if (kind() == DQM_KIND_TH1F
       || kind() == DQM_KIND_TH1S
-      || kind() == DQM_KIND_TH1D)
+      || kind() == DQM_KIND_TH1D || kind() == DQM_KIND_TH1I)
   {
     int nbins = getNbinsX();
     int entries = (int)getEntries();
@@ -1048,6 +1058,20 @@ MonitorElement::softReset(void)
     r->Add(orig);
     orig->Reset();
   }
+  else if (kind() == DQM_KIND_TH1I)
+  {
+    TH1I *orig = static_cast<TH1I *>(object_);
+    TH1I *r = static_cast<TH1I *>(refvalue_);
+    if (! r)
+    {
+      refvalue_ = r = (TH1I*)orig->Clone((std::string(orig->GetName()) + "_ref").c_str());
+      r->SetDirectory(0);
+      r->Reset();
+    }
+
+    r->Add(orig);
+    orig->Reset();
+  }
   else if (kind() == DQM_KIND_TH1D)
   {
     TH1D *orig = static_cast<TH1D *>(object_);
@@ -1158,6 +1182,8 @@ MonitorElement::disableSoftReset(void)
   {
     if (kind() == DQM_KIND_TH1F
         || kind() == DQM_KIND_TH1S
+        || kind() == DQM_KIND_TH1I
+        || kind() == DQM_KIND_TH2I
         || kind() == DQM_KIND_TH1D
         || kind() == DQM_KIND_TH2F
         || kind() == DQM_KIND_TH2S
@@ -1332,6 +1358,8 @@ MonitorElement::copyFrom(TH1 *from)
   {
     if (kind() == DQM_KIND_TH1F
         || kind() == DQM_KIND_TH1S
+        || kind() == DQM_KIND_TH1I
+        || kind() == DQM_KIND_TH2I
         || kind() == DQM_KIND_TH1D
         || kind() == DQM_KIND_TH2F
         || kind() == DQM_KIND_TH2S
@@ -1461,12 +1489,22 @@ MonitorElement::getTH1F(void) const
   return static_cast<TH1F *>(accessRootObject(__PRETTY_FUNCTION__, 1));
 }
 
-TH1S *
-MonitorElement::getTH1S(void) const
-{
+TH1S * MonitorElement::getTH1S(void) const {
   assert(kind() == DQM_KIND_TH1S);
   const_cast<MonitorElement *>(this)->update();
   return static_cast<TH1S *>(accessRootObject(__PRETTY_FUNCTION__, 1));
+}
+
+TH1I * MonitorElement::getTH1I(void) const {
+  assert(kind() == DQM_KIND_TH1I);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH1I *>(accessRootObject(__PRETTY_FUNCTION__, 1));
+}
+
+TH2I * MonitorElement::getTH2I(void) const {
+  assert(kind() == DQM_KIND_TH2I);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH2I *>(accessRootObject(__PRETTY_FUNCTION__, 1));
 }
 
 TH1D *
@@ -1549,12 +1587,24 @@ MonitorElement::getRefTH1F(void) const
     (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 1));
 }
 
-TH1S *
-MonitorElement::getRefTH1S(void) const
-{
+TH1S * MonitorElement::getRefTH1S(void) const {
   assert(kind() == DQM_KIND_TH1S);
   const_cast<MonitorElement *>(this)->update();
   return static_cast<TH1S *>
+    (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 1));
+}
+
+TH1I * MonitorElement::getRefTH1I(void) const {
+  assert(kind() == DQM_KIND_TH1I);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH1I *>
+    (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 1));
+}
+
+TH2I * MonitorElement::getRefTH2I(void) const {
+  assert(kind() == DQM_KIND_TH2I);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH2I *>
     (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 1));
 }
 
