@@ -72,6 +72,24 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     ref_ = me->getRefTH1S(); //access Ref hiso 
     if (nbins != nbinsref) return -1;
   } 
+  //-- TH1I
+  else if (me->kind()==MonitorElement::DQM_KIND_TH1I)
+  { 
+    nbins = me->getTH1I()->GetXaxis()->GetNbins(); 
+    nbinsref = me->getRefTH1I()->GetXaxis()->GetNbins();
+    h  = me->getTH1I(); // access Test histo
+    ref_ = me->getRefTH1I(); //access Ref hiso 
+    if (nbins != nbinsref) return -1;
+  } 
+  //-- TH2I
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2I)
+  { 
+    nbins = me->getTH1I()->GetXaxis()->GetNbins(); 
+    nbinsref = me->getRefTH2I()->GetXaxis()->GetNbins();
+    h  = me->getTH2I(); // access Test histo
+    ref_ = me->getRefTH2I(); //access Ref hiso 
+    if (nbins != nbinsref) return -1;
+  } 
   //-- TH1D
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D)
   { 
@@ -183,6 +201,18 @@ float Comp2RefChi2::runTest(const MonitorElement *me)
   { 
     h = me->getTH1S(); // access Test histo
     ref_ = me->getRefTH1S(); //access Ref histo
+  } 
+  //-- TH1I
+  else if (me->kind()==MonitorElement::DQM_KIND_TH1I)
+  { 
+    h = me->getTH1I(); // access Test histo
+    ref_ = me->getRefTH1I(); //access Ref histo
+  } 
+  //-- TH2I
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2I)
+  { 
+    h = me->getTH2I(); // access Test histo
+    ref_ = me->getRefTH2I(); //access Ref histo
   } 
   //-- TH1D
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D)
@@ -497,6 +527,10 @@ float ContentsXRange::runTest(const MonitorElement*me)
   {
     h = me->getTH1S();
   } 
+  else if ( me->kind()==MonitorElement::DQM_KIND_TH1I ) 
+  {
+    h = me->getTH1I();
+  } 
   // -- TH1D
   else if ( me->kind()==MonitorElement::DQM_KIND_TH1D ) 
   {
@@ -566,6 +600,10 @@ float ContentsYRange::runTest(const MonitorElement*me)
   { 
     h = me->getTH1S(); //access Test histo
   } 
+  else if (me->kind()==MonitorElement::DQM_KIND_TH1I) 
+  { 
+    h = me->getTH1I(); //access Test histo
+  } 
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D) 
   { 
     h = me->getTH1D(); //access Test histo
@@ -575,7 +613,7 @@ float ContentsYRange::runTest(const MonitorElement*me)
     if (verbose_>0) 
       std::cout << "QTest:ContentsYRange" 
                 << " ME " << me->getFullname() 
-                << " does not contain TH1F/TH1S/TH1D, exiting\n"; 
+                << " does not contain TH1F/TH1S/TH1I/TH1D, exiting\n"; 
     return -1;
   } 
 
@@ -770,6 +808,11 @@ float NoisyChannel::runTest(const MonitorElement *me)
     nbins = me->getTH1S()->GetXaxis()->GetNbins(); 
     h  = me->getTH1S(); // access Test histo
   } 
+  else if (me->kind()==MonitorElement::DQM_KIND_TH1I)
+  { 
+    nbins = me->getTH1I()->GetXaxis()->GetNbins(); 
+    h  = me->getTH1I(); // access Test histo
+  } 
   //-- TH1D
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D)
   { 
@@ -789,6 +832,12 @@ float NoisyChannel::runTest(const MonitorElement *me)
     nbins = me->getTH2S()->GetXaxis()->GetNbins() *
             me->getTH2S()->GetYaxis()->GetNbins();
     h  = me->getTH2S(); // access Test histo
+  } 
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2I)
+  { 
+    nbins = me->getTH2I()->GetXaxis()->GetNbins() *
+            me->getTH2I()->GetYaxis()->GetNbins();
+    h  = me->getTH2I(); // access Test histo
   } 
   //-- TH2
   else if (me->kind()==MonitorElement::DQM_KIND_TH2D)
@@ -1166,6 +1215,10 @@ float MeanWithinExpected::runTest(const MonitorElement *me )
   { 
     h = me->getTH1S(); //access Test histo
   }
+  else if (me->kind()==MonitorElement::DQM_KIND_TH1I) 
+  { 
+    h = me->getTH1I(); //access Test histo
+  }
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D) 
   { 
     h = me->getTH1D(); //access Test histo
@@ -1174,7 +1227,7 @@ float MeanWithinExpected::runTest(const MonitorElement *me )
     if (verbose_>0) 
       std::cout << "QTest:MeanWithinExpected"
                 << " ME " << me->getFullname() 
-                << " does not contain TH1F/TH1S/TH1D, exiting\n"; 
+                << " does not contain TH1F/TH1S/TH1D/TH1I, exiting\n"; 
     return -1;
   } 
  

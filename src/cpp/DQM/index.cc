@@ -481,6 +481,7 @@ classifyMonitorElement(DQMStore & /* store */,
 
   case MonitorElement::DQM_KIND_TH1F:
   case MonitorElement::DQM_KIND_TH1S:
+  case MonitorElement::DQM_KIND_TH1I:
   case MonitorElement::DQM_KIND_TH1D:
   case MonitorElement::DQM_KIND_TH2F:
   case MonitorElement::DQM_KIND_TH2S:
@@ -1129,8 +1130,8 @@ extend(VisDQMIndex &ix,
 	    {
 	    case MonitorElement::DQM_KIND_TH1F:
 	    case MonitorElement::DQM_KIND_TH1S:
-	    case MonitorElement::DQM_KIND_TH1D:
 	    case MonitorElement::DQM_KIND_TH1I:
+	    case MonitorElement::DQM_KIND_TH1D:
 	    case MonitorElement::DQM_KIND_TH2F:
 	    case MonitorElement::DQM_KIND_TH2S:
 	    case MonitorElement::DQM_KIND_TH2D:
@@ -1359,12 +1360,12 @@ readFileStream(FileInfo &fi,
       break;
     case MonitorElement::DQM_KIND_TH1F:
     case MonitorElement::DQM_KIND_TH1S:
-    case MonitorElement::DQM_KIND_TH1D:
     case MonitorElement::DQM_KIND_TH1I:
+    case MonitorElement::DQM_KIND_TH1D:
     case MonitorElement::DQM_KIND_TH2F:
     case MonitorElement::DQM_KIND_TH2S:
-    case MonitorElement::DQM_KIND_TH2D:
     case MonitorElement::DQM_KIND_TH2I:
+    case MonitorElement::DQM_KIND_TH2D:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -1486,12 +1487,12 @@ readFileStreamProtocolBuffer(FileInfo &fi,
       break;
     case MonitorElement::DQM_KIND_TH1F:
     case MonitorElement::DQM_KIND_TH1S:
-    case MonitorElement::DQM_KIND_TH1D:
     case MonitorElement::DQM_KIND_TH1I:
+    case MonitorElement::DQM_KIND_TH1D:
     case MonitorElement::DQM_KIND_TH2F:
     case MonitorElement::DQM_KIND_TH2S:
-    case MonitorElement::DQM_KIND_TH2D:
     case MonitorElement::DQM_KIND_TH2I:
+    case MonitorElement::DQM_KIND_TH2D:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:

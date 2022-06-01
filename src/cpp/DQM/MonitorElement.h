@@ -6,6 +6,8 @@
 # include "TF1.h"
 # include "TH1F.h"
 # include "TH1S.h"
+# include "TH1I.h"
+# include "TH2I.h"
 # include "TH1D.h"
 # include "TH2F.h"
 # include "TH2S.h"
@@ -341,6 +343,8 @@ public:
   TH1 *getTH1(void) const;
   TH1F *getTH1F(void) const;
   TH1S *getTH1S(void) const;
+  TH1I *getTH1I(void) const;
+  TH2I *getTH2I(void) const;
   TH1D *getTH1D(void) const;
   TH2F *getTH2F(void) const;
   TH2S *getTH2S(void) const;
@@ -353,6 +357,8 @@ public:
   TH1 *getRefTH1(void) const;
   TH1F *getRefTH1F(void) const;
   TH1S *getRefTH1S(void) const;
+  TH1I *getRefTH1I(void) const;
+  TH2I *getRefTH2I(void) const;
   TH1D *getRefTH1D(void) const;
   TH2F *getRefTH2F(void) const;
   TH2S *getRefTH2S(void) const;
