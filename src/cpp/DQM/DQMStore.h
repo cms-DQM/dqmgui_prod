@@ -352,11 +352,6 @@ class DQMStore
   MonitorElement *              book1I(const char *name, TH1I *source);
   MonitorElement *              book1I(const std::string &name, TH1I *source);
 
-  MonitorElement *              book2I(const char *name, const char *title, int nchX, double lowX, double highX);
-  MonitorElement *              book2I(const std::string &name, const std::string &title, int nchX, double lowX, double highX);
-  MonitorElement *              book2I(const char *name, TH1I *source);
-  MonitorElement *              book2I(const std::string &name, TH1I *source);
-
   MonitorElement *              book1DD       (const char *name,
                                                const char *title,
                                                int nchX, double lowX, double highX);
@@ -391,24 +386,17 @@ class DQMStore
   MonitorElement *              book2D       (const char *name, TH2F *h);
   MonitorElement *              book2D       (const std::string &name, TH2F *h);
 
-  MonitorElement *              book2S       (const char *name,
-                                              const char *title,
-                                              int nchX, double lowX, double highX,
-                                              int nchY, double lowY, double highY);
-  MonitorElement *              book2S       (const std::string &name,
-                                              const std::string &title,
-                                              int nchX, double lowX, double highX,
-                                              int nchY, double lowY, double highY);
-  MonitorElement *              book2S       (const char *name,
-                                              const char *title,
-                                              int nchX, const float *xbinsize,
-                                              int nchY, const float *ybinsize);
-  MonitorElement *              book2S       (const std::string &name,
-                                              const std::string &title,
-                                              int nchX, const float *xbinsize,
-                                              int nchY, const float *ybinsize);
+  MonitorElement *              book2S       (const char *name, const char *title, int nchX, double lowX, double highX, int nchY, double lowY, double highY);
+  MonitorElement *              book2S       (const std::string &name, const std::string &title, int nchX, double lowX, double highX, int nchY, double lowY, double highY);
+  MonitorElement *              book2S       (const char *name, const char *title, int nchX, const float *xbinsize, int nchY, const float *ybinsize);
+  MonitorElement *              book2S       (const std::string &name, const std::string &title, int nchX, const float *xbinsize, int nchY, const float *ybinsize);
   MonitorElement *              book2S       (const char *name, TH2S *h);
   MonitorElement *              book2S       (const std::string &name, TH2S *h);
+
+  MonitorElement *              book2I       (const char *name, const char *title, int nchX, double lowX, double highX, int nchY, double lowY, double highY);
+  MonitorElement *              book2I       (const std::string &name, const std::string &title, int nchX, double lowX, double highX, int nchY, double lowY, double highY);
+  MonitorElement *              book2I(const char *name, TH2I *source);
+  MonitorElement *              book2I(const std::string &name, TH2I *source);
 
   MonitorElement *              book2DD       (const char *name,
                                                const char *title,
