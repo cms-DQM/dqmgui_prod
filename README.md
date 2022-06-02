@@ -13,6 +13,31 @@ update cmsdist/dqmgui.spec to use tag from dev128 branch and change the tag numb
 ./pkgtools/cmsBuild --repo comp -a slc7_amd64_gcc630 -i w -j 10 build dqmgui
 ```
 probably, after this it is possible to move executables to P5 machine.
+This will create RPM file in the folder like:
+```
+w/BUILD/slc7_amd64_gcc630/cms/dqmgui/9.7.6-806fc9e67463bf3883214edfa77e3b6f
+```
+To extract:
+```
+rpm2cpio myrpmfile.rpm | cpio -idmv
+```
+Then at a srv machine we can do something like:
+```
+cd /data/srv
+cd ./stop_everything
+cp w/slc7_amd64_gcc630/cms/dqmgui/9.7.6-806fc9e67463bf3883214edfa77e3b6f/128/bin/visDQM* /data/srv/HG2206c/sw/slc7_amd64_gcc630/cms/dqmgui/9.7.4/128/bin/.
+```
+Then 
+```
+cd /dqmdata/dqm/repository/original/OnlineData/00035xxxx/0003525xx/
+cp DQM_V0001_HLTpb_R000352572.root DQM_V0002_HLTpb_R000352572.root
+cp DQM_V0001_SiStrip_R000352572.root.dqminfo DQM_V0002_SiStrip_R000352572.root.dqminfo
+```
+modify the path in `DQM_V0002_SiStrip_R000352572.root.dqminfo` and feed the file to indexer, check logs:
+```
+cp DQM_V0002_SiStrip_R000352572.root.dqminfo /dqmdata/dqm/agents/import-srv-c2f11-29-04/.
+nano /data/srv/logs/dqmgui/online/agent-import-128-20220602-srv-c2f11-29-04.log
+```
 
 ## Update Offline DQM GUI:  
 Make and merge a PR into branch index128. Create a tag in dqmgui repo. Change GUI version in cmsdist (first line): 
