@@ -61,7 +61,7 @@ private:
 
 public:
   /** Initialise an empty patricia tree. */
-  StringAtomTree(size_t capacity = 1024*1024)
+  StringAtomTree(size_t capacity = 2048*2048)
   {
     tree_.reserve(capacity);
     tree_.push_back(Node());
