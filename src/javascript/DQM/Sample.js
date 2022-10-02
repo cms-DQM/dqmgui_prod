@@ -446,17 +446,26 @@ GUI.Plugin.DQMSample = new function() {
 
         if (type == "live")
           prev = null;
-        else
+        else {
           singleDatasetContent += _("<div style='clear:both;margin:0 2em'>"
                                     + "<div onclick='return"
-                                    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${dshtml}\", \"dataset\")'"
-                                    + " style='cursor:pointer; ${style}' > ${label}: (#TOBEREPLACED) </div>",
+                                    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${dshtml}\", \"dataset\", 5000)'"
+                                    + " style='cursor:pointer; ${style}' > ${label}: (last 5000 runs, fast) </div>",
                                     { dshtml: _sanitise(dataset),
                                         style: (selds ? _selemstyle : ''),
-                                        label: (type == "online_data" ? "Online Runs" :_sanitise(dataset)),
+                                        label: (type == "online_data" ? "Show Online Runs" :_sanitise(dataset)),
                                         thetype: type});
+          singleDatasetContent += _("<div onclick='return"
+                                    + " GUI.Plugin.DQMSample.expand(this,\"${thetype}\", \"${dshtml}\", \"dataset\")'"
+                                    + " style='cursor:pointer; ${style}' > ${label}: (all #TOBEREPLACED runs, slow) </div>",
+                                    { dshtml: _sanitise(dataset),
+                                        style: (selds ? _selemstyle : ''),
+                                        label: (type == "online_data" ? "Show Online Runs" :_sanitise(dataset)),
+                                        thetype: type});
+        };
         if (expanded)
           singleDatasetContent += "<div>";
+
       }
 
       // Update this element in case this sample is in the expanded's list
@@ -544,7 +553,7 @@ GUI.Plugin.DQMSample = new function() {
                                     + " style='cursor:pointer ${style}' >${label} (#TOBEREPLACED):</div>",
                                     { ckey: _sanitise(key),
                                         style: (selrun ? _selemstyle : ''),
-                                        label: (type == 'online_data' ? 'Online Runs' :
+                                        label: (type == 'online_data' ? 'Show Online Runs' :
                                                 ( type == "offline_mc" ? 'Monte Carlo' : key)) ,
                                         thetype: type});
         if (expanded)
@@ -575,7 +584,7 @@ GUI.Plugin.DQMSample = new function() {
     return content;
   };
 
-  this.expand = function(el, type, key, by)
+  this.expand = function(el, type, key, by, n_items_max = 999999999)
   {
     var cur = _data.current;
 
@@ -600,10 +609,13 @@ GUI.Plugin.DQMSample = new function() {
     var content = '';
     for (i = 0, k = _data.items.length; i < k; ++i)
     {
+      if( n_items_max <= 0 ) break;
       if (type == _data.items[i].type)
       {
         for (var j = 0, l = _data.items[i].items.length; j < l; ++j)
         {
+          if( n_items_max <= 0 ) break;
+          n_items_max -= 1;
           var s = _data.items[i].items[j];
           var compareTo = (by == 'dataset' ? s.dataset
                            : (type == "offline_data" ? s.run
