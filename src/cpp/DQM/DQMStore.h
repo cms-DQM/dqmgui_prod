@@ -40,10 +40,12 @@ class TH1D;
 class TH2F;
 class TH2S;
 class TH2D;
+class TH2Poly;
 class TH3F;
 class TProfile;
 class TProfile2D;
 class TNamed;
+class TGraph;
 
 
 /** Implements RegEx patterns which occur often in a high-performant
@@ -417,6 +419,11 @@ class DQMStore
   MonitorElement *              book2DD       (const char *name, TH2D *h);
   MonitorElement *              book2DD       (const std::string &name, TH2D *h);
 
+  MonitorElement *              book2DPoly    (const char *name,
+                                               const char *title,
+                                               double lowX, double highX,
+                                               double lowY, double highY);
+
   MonitorElement *              book3D       (const char *name,
                                               const char *title,
                                               int nchX, double lowX, double highX,
@@ -663,6 +670,7 @@ class DQMStore
   MonitorElement *              book2D(const std::string &dir, const std::string &name, TH2F *h);
   MonitorElement *              book2S(const std::string &dir, const std::string &name, TH2S *h);
   MonitorElement *              book2DD(const std::string &dir, const std::string &name, TH2D *h);
+  MonitorElement *              book2DPoly(const std::string &dir, const std::string &name, TH2Poly *h);
   MonitorElement *              book3D(const std::string &dir, const std::string &name, TH3F *h);
   MonitorElement *              bookProfile(const std::string &dir, const std::string &name, TProfile *h);
   MonitorElement *              bookProfile2D(const std::string &folder, const std::string &name, TProfile2D *h);
@@ -677,6 +685,7 @@ class DQMStore
   static void                   collate2D(MonitorElement *me, TH2F *h, unsigned verbose);
   static void                   collate2S(MonitorElement *me, TH2S *h, unsigned verbose);
   static void                   collate2DD(MonitorElement *me, TH2D *h, unsigned verbose);
+  static void                   collate2DPoly(MonitorElement *me, TH2Poly *h, unsigned verbose);
   static void                   collate3D(MonitorElement *me, TH3F *h, unsigned verbose);
   static void                   collateProfile(MonitorElement *me, TProfile *h, unsigned verbose);
   static void                   collateProfile2D(MonitorElement *me, TProfile2D *h, unsigned verbose);
