@@ -1111,6 +1111,7 @@ DQMStore::book2D(const std::string &dir, const std::string &name, TH2F *h)
   return book(dir, name, "book2D", MonitorElement::DQM_KIND_TH2F, h, collate2D);
 }
 
+MonitorElement *
 DQMStore::book2DPoly(const std::string &dir, const std::string &name, TH2Poly *h)
 {
   return book(dir, name, "book2DPoly", MonitorElement::DQM_KIND_TH2Poly, h, collate2DPoly);
