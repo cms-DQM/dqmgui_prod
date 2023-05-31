@@ -860,14 +860,14 @@ MonitorElement::getTitle(void) const
 
 /*** setter methods (wrapper around ROOT methods) ****/
 //
-/// set polygonal bin (TH2Poly)
-void
-MonitorElement::addBin(TGraph *graph)
-{
-  update();
-  accessRootObject(__PRETTY_FUNCTION__, 2)
-    ->AddBin(graph);
-}
+// /// set polygonal bin (TH2Poly)
+// void
+// MonitorElement::addBin(TGraph *graph)
+// {
+//   update();
+//   accessRootObject(__PRETTY_FUNCTION__, 2)
+//     ->AddBin(graph);
+// }
 
 /// set content of bin (1-D)
 void
@@ -1156,11 +1156,11 @@ MonitorElement::softReset(void)
     {
       refvalue_ = r = (TH2Poly*)orig->Clone((std::string(orig->GetName()) + "_ref").c_str());
       r->SetDirectory(0);
-      r->Reset();
+      r->Reset("");
     }
 
     r->Add(orig);
-    orig->Reset();
+    orig->Reset("");
   }
   else if (kind() == DQM_KIND_TH3F)
   {

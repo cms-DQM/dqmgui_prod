@@ -1607,8 +1607,16 @@ DQMStore::collate2D(MonitorElement *me, TH2F *h, unsigned verbose)
 void
 DQMStore::collate2DPoly(MonitorElement *me, TH2Poly *h, unsigned verbose)
 {
-  if (checkBinningMatches(me,h,verbose))
-    me->getTH2Poly()->Add(h);
+  if (checkBinningMatches(me,h,verbose)) {
+    TH2Poly *p = me->getTH2Poly();
+    int nbins = p->GetNcells() - 9;
+    for(int ibin=1; ibin<nbins+1; ++ibin) {
+        double value1 = p->GetBinContent(ibin);
+        double value2 = h->GetBinContent(ibin);
+        double total = value1 + value2;
+        p->SetBinContent(ibin, total);
+    }
+  }
 }
 
 void

@@ -269,7 +269,7 @@ private:
 public:
   std::string getAxisTitle(int axis = 1) const;
   std::string getTitle(void) const;
-  void addBin(TGraph *graph);
+  //void addBin(TGraph *graph);
   void setBinContent(int binx, double content);
   void setBinContent(int binx, int biny, double content);
   void setBinContent(int binx, int biny, int binz, double content);
