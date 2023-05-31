@@ -1159,7 +1159,14 @@ MonitorElement::softReset(void)
       r->Reset("");
     }
 
-    r->Add(orig);
+    //r->Add(orig);
+    int nbins = r->GetNcells() - 9;
+    for(int ibin=1; ibin<nbins+1; ++ibin) {
+        double value1 = r->GetBinContent(ibin);
+        double value2 = orig->GetBinContent(ibin);
+        double total = value1 + value2;
+        r->SetBinContent(ibin, total);
+    }
     orig->Reset("");
   }
   else if (kind() == DQM_KIND_TH3F)
