@@ -18,6 +18,7 @@ parser.add_argument("DROPBOX",
 parser.add_argument("FILEREPO",
                     help="Final file repository of original DQM files")
 parser.add_argument("INDEX", help="Location of the DQM GUI index.")
+parser.add_argument("--min_run", dest="min_run", type=int, default=0, help="minimum run to prioritize the file indexing")
 parser.add_argument("--next", nargs='+', default = [], help="Directories for "
                     "the next agents in chain that pick up the root files.")
 parser.add_argument("--rsync", action="store_true", help="Use rsync to make a "
@@ -102,17 +103,17 @@ def orderFiles(a, b):
   diff = classOrder.index(a['class']) - classOrder.index(b['class'])
   if diff: return diff
 ####################################################################
-## Priority given to 2023 Collision runs first 
-## So that Rereco data of 2022 will be indexed later
-## This hard-wired code must be updated when we move to 2024
+## Priority given to runs greater than or equal to min_run
 ####################################################################
-  if a['runnr'] >= 365753:
-    if b['runnr'] >= 365753:
+  if args.min_run <=0:
+    diff = 0
+  elif a['runnr'] >= args.min_run:
+    if b['runnr'] >= args.min_run:
       diff = 0
     else:
       diff = -1
   else:
-    if b['runnr'] >= 365753:
+    if b['runnr'] >= args.min_run:
       diff = 1
   if diff: return diff
 ####################################################################
