@@ -1,0 +1,6 @@
+cherrypy
+pycurl
+numpy
+matplotlib
+pillow
+. # Also install dqmgui itself
