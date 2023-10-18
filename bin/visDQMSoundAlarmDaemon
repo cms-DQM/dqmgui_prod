@@ -1,15 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import urllib2
 import re
-import os
 import time
 import sys
 import json
 from traceback import print_exc
-from datetime import datetime
-from urllib import quote
-from fcntl import lockf, LOCK_EX, LOCK_UN
+from Monitoring.Core.Utils import logme
+from urllib import parse, request, error
 from socket import socket, AF_INET, SOCK_STREAM, gethostname
 from subprocess import Popen, PIPE
 
@@ -41,287 +38,307 @@ from subprocess import Popen, PIPE
 
 # There is an extension to this tool called visDQMSoundAlarmManager.
 # It's a small web app which displays all plots located in ERROR_FOLDER
-# and provides an ability to disable alarms for chosen plots. 
-# This tool queries the API of the visDQMSoundAlarmManager for the list 
+# and provides an ability to disable alarms for chosen plots.
+# This tool queries the API of the visDQMSoundAlarmManager for the list
 # of disabled plots before sending the alarms.
-
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
-BASEURL = quote(sys.argv[1],':/-_') # GUI Server's URL
-SOUNDSERVER = sys.argv[2] # CMS-WOW server's name
-PORT = int(sys.argv[3]) # Listening port on the CMS-WOW server
-REMINDERINTERVAL = int(sys.argv[4]) # Seconds between sonourous alarms
-REBROADCAST = int(sys.argv[5]) # Number of times the same alarm is broadcasted
+BASEURL = parse.quote(sys.argv[1], ":/-_")  # GUI Server's URL
+SOUNDSERVER = sys.argv[2]  # CMS-WOW server's name
+PORT = int(sys.argv[3])  # Listening port on the CMS-WOW server
+REMINDERINTERVAL = int(sys.argv[4])  # Seconds between sonourous alarms
+REBROADCAST = int(sys.argv[5])  # Number of times the same alarm is broadcasted
 if len(sys.argv) >= 7:
-  EMAIL_ADDRESSES = sys.argv[6] # Emails to notify, multiple addresses are
-                                # accepted, separated by ','
+    EMAIL_ADDRESSES = sys.argv[6]  # Emails to notify, multiple addresses are
+    # accepted, separated by ','
 else:
-  EMAIL_ADDRESSES = ''
+    EMAIL_ADDRESSES = ""
 
 # URL to get a list of disabled alarms
-ALARM_MANAGER_URL = 'http://localhost:8031/disabled'
+ALARM_MANAGER_URL = "http://localhost:8031/disabled"
 if len(sys.argv) >= 8:
-  ALARM_MANAGER_URL = sys.argv[7]
+    ALARM_MANAGER_URL = sys.argv[7]
 
 # To enable the special "test-mode" add a 8th argument "test"
 # Otherwise the daemon does its normal stuff (which is good)
 if len(sys.argv) >= 9:
-  IS_TEST = (sys.argv[8] == "test")
+    IS_TEST = sys.argv[8] == "test"
 else:
-  IS_TEST = False
+    IS_TEST = False
 
 
 # GLOBAL CONSTANTS
 # location of the error folder that contains alarms histos.
-ERROR_FOLDER = quote("00 Shift/Errors", ':/-_')
-DATA_LOCATION = quote("data/json/live/1/Global/Online/ALL", ':/-_')
+ERROR_FOLDER = parse.quote("00 Shift/Errors", ":/-_")
+DATA_LOCATION = parse.quote("data/json/live/1/Global/Online/ALL", ":/-_")
 
 # Body of the XML message that is sent to CMS-WOW
-MSGBODY = ('<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
-           '%s Check plots in the DQM Error folder.</alarm></CommandSequence>')
+MSGBODY = (
+    '<CommandSequence><alarm sender="DQM" sound="DQM_1.wav" talk="%s">'
+    "%s Check plots in the DQM Error folder.</alarm></CommandSequence>"
+)
 
 WAITTIME = 30
 
+
 # --------------------------------------------------------------------
-def logme(msg, *args):
-  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+
 
 # Short hand to send XML message to CMS-WOW
 def send_sound_msg(msg, spoken_msg):
-  s = socket(AF_INET, SOCK_STREAM)
-  s.connect((SOUNDSERVER, PORT))
-  s.send(MSGBODY % (spoken_msg, msg))
-  data = s.recv(1024)
-  s.close()
-  if data == "All ok\n":
-    logme("INFO: Broadcasted message: %s ", msg)
-    send_email_msg('We (DQM) just played a sound in the control room.\n'
-                   'The message we played was: "%s"\n\n--\n%s' % (spoken_msg, msg))
-    return True
-  else:
-    error_msg = "ERROR: Unexpected answer from CMS-WOW: %s" % repr(data)
-    logme(error_msg)
-    send_email_msg(error_msg)
-    return False
+    s = socket(AF_INET, SOCK_STREAM)
+    s.connect((SOUNDSERVER, PORT))
+    s.send(MSGBODY % (spoken_msg, msg))
+    data = s.recv(1024)
+    s.close()
+    if data == "All ok\n":
+        logme("INFO: Broadcasted message: %s ", msg)
+        send_email_msg(
+            "We (DQM) just played a sound in the control room.\n"
+            'The message we played was: "%s"\n\n--\n%s' % (spoken_msg, msg)
+        )
+        return True
+    else:
+        error_msg = "ERROR: Unexpected answer from CMS-WOW: %s" % repr(data)
+        logme(error_msg)
+        send_email_msg(error_msg)
+        return False
+
 
 # Short hand to send email message
 def send_email_msg(msg):
-  if EMAIL_ADDRESSES:
-    logme("Sending email to %s with following message:\n%s" %
-                                                (EMAIL_ADDRESSES, msg))
-    process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
-    process.stdin.write("To: %s\n" % EMAIL_ADDRESSES)
-    process.stdin.write("Subject: Message from the visDQMSoundAlarmDaemon on "
-                        "%s at P5\n" % gethostname())
-    process.stdin.write("\n") # blank line separating headers from body
-    process.stdin.write("%s\n\n" % msg)
-    process.stdin.write("The logs should be here: /data/srv/logs/dqmgui/"
-                        "online/\n")
-    process.stdin.close()
-    returncode = process.wait()
-    if returncode != 0:
-      logme("ERROR: Sendmail exit with status %s", returncode)
-  else:
-    logme("Not sending email, since no emailaddresses were set.")
+    if EMAIL_ADDRESSES:
+        logme(
+            "Sending email to %s with following message:\n%s" % (EMAIL_ADDRESSES, msg)
+        )
+        process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
+        process.stdin.write(f"To: {EMAIL_ADDRESSES}\n".encode())
+        process.stdin.write(
+            f"Subject: Message from the visDQMSoundAlarmDaemon on {gethostname()} at P5\n".encode()
+        )
+        process.stdin.write("\n".encode())  # blank line separating headers from body
+        process.stdin.write(f"{msg}\n\n".encode())
+        process.stdin.write(
+            f"The logs should be here: /data/srv/logs/dqmgui/online/\n".encode()
+        )
+        process.stdin.close()
+        returncode = process.wait()
+        if returncode != 0:
+            logme("ERROR: Sendmail exit with status %s", returncode)
+    else:
+        logme("Not sending email, since no emailaddresses were set.")
+
 
 # Short hand to extract GUI information, it fails if the retrieved
 # data is not python format.
-def getGuiData(opener,url):
-  page1 = opener1.open(url)
-  data = page1.read()
-  try:
-    contents = eval(data)
-  except Exception, e:
-    raise e
-  page1.close()
-  return contents
+def getGuiData(opener, url):
+    page1 = opener.open(url)
+    data = page1.read()
+    try:
+        contents = eval(data)
+    except Exception as e:
+        raise e
+    page1.close()
+    return contents
 
 
 # Construct URL pointing to the Error folder
 sr = re.search(r"dqm/(online)", BASEURL)
 if not sr:
-  logme("FATAL: Could not identify the site from the base url")
-  sys.exit(1)
+    logme("FATAL: Could not identify the site from the base url")
+    sys.exit(1)
 
 BASEURL = "%s/%s/%s/" % (BASEURL, DATA_LOCATION, ERROR_FOLDER)
+
 
 # This method is just to test the sound infrastructure.
 # It will try to play a test message, send a test email and then exit.
 def run_test():
-  logme("Running in test mode.")
-  msg = 'This is a test'
-  spoken_msg = 'This is a test'
-  # First try to test sending a sound message
-  logme("Trying to send a sound message.")
-  try:
-    send_sound_msg(msg, spoken_msg)
-  except Exception, e:
-    logme('ERROR: %s', e)
-    print_exc()
-  # Then try to test sending an email message
-  logme("Trying to send an email message.")
-  try:
-    send_email_msg(msg)
-  except Exception, e:
-    logme('ERROR: %s', e)
-    print_exc()
+    logme("Running in test mode.")
+    msg = "This is a test"
+    spoken_msg = "This is a test"
+    # First try to test sending a sound message
+    logme("Trying to send a sound message.")
+    try:
+        send_sound_msg(msg, spoken_msg)
+    except Exception as e:
+        logme("ERROR: %s", e)
+        print_exc()
+    # Then try to test sending an email message
+    logme("Trying to send an email message.")
+    try:
+        send_email_msg(msg)
+    except Exception as e:
+        logme("ERROR: %s", e)
+        print_exc()
+
 
 # This method will start the actual daemon, checking the GUI every WAITTIME
 # seconds
 def run_daemon():
-  lastMessage = 0
-  remindersSent = 0
+    lastMessage = 0
+    remindersSent = 0
 
-  noRun = True
-  alarms = {}
+    noRun = True
+    activeURLErrors = 0
 
-  knownAlarms = set()
-  while True:
-    try:
-      now = time.time()
-
-      # Get data from DQM GUI:
-      datareq = urllib2.Request(BASEURL)
-      result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
-      state = result.read()
-      # Arriving here, connection to GUI was successful, resetting error
-      # counter.
-      activeURLErrors = 0
-
-      state = json.loads(state)
-
-      ## Detect No run state
-      if noRun == False and len(state["contents"]) <= 1:
-        noRun = True
-        alarms = {}
-        lastMessage = 0
-
-      if noRun and len(state["contents"]) > 1:
-        noRun = False
-
-      if noRun:
-        logme("Daemon woke up. No run going on. Going back to sleep.")
-        time.sleep(WAITTIME)
-        continue
-
-      # Find new alarm histos, and update alarm states
-      knownNewAlarms = set()
-      for histo in state["contents"]:
-        if histo.has_key('path'):
-          name = histo['path']
-        else:
-          continue
-       
-        # Get the disasbled alarms from the alarm manager:
-        disabledAlarms = []
+    knownAlarms = set()
+    while True:
         try:
-	  datareq = urllib2.Request(ALARM_MANAGER_URL)
-          result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
-          disabledAlarms = json.loads(result.read())
-        except:
-          # If we're unable to get disabled alarms, assume that all of them are enabled
-          pass
+            now = time.time()
 
-        if histo['properties']['report']['alarm'] == 1:
-          if name in disabledAlarms:
-            logme("Histo caused an alarm but it was disabled in the alarm manager: %s" % name)
-          else:
-            knownNewAlarms.add(name)
-            logme("Info from the DQM GUI: %s" % str(histo))
+            # Get data from DQM GUI:
+            datareq = request.Request(BASEURL)
+            result = request.build_opener(request.ProxyHandler({})).open(datareq)
+            state = result.read()
+            # Arriving here, connection to GUI was successful, resetting error
+            # counter.
+            activeURLErrors = 0
 
-      # should alarm be triggered
-      alarmsNew = knownNewAlarms.difference(knownAlarms)
-      sendMessage = False
-      isReminder = False
+            state = json.loads(state)
 
-      # alarmsRecovered = knownAlarms.difference(knownNewAlarms)
-      if (len(alarmsNew) > 0):
-        sendMessage, isReminder = True, False
-        lastMessage = now
-        remindersSent = 0
-      elif len(knownNewAlarms) and remindersSent < REBROADCAST:
-        # situation has not changed, but we still need to 'remind' the shifter
-        elapsed = now - lastMessage
-        delay = (remindersSent+1) * REMINDERINTERVAL
+            ## Detect No run state
+            if noRun == False and len(state["contents"]) <= 1:
+                noRun = True
+                lastMessage = 0
 
-        if elapsed >= delay:
-          remindersSent += 1
-          sendMessage, isReminder = True, True
+            if noRun and len(state["contents"]) > 1:
+                noRun = False
 
-      if sendMessage:
-        logme("Info from the DQM GUI: %s" % str(histo))
+            if noRun:
+                logme("Daemon woke up. No run going on. Going back to sleep.")
+                time.sleep(WAITTIME)
+                continue
 
-        msgs = []
-        if isReminder:
-            msgs.append("Reminder. ")
-        else:
-            msgs.append("")
+            # Find new alarm histos, and update alarm states
+            knownNewAlarms = set()
+            for histo in state["contents"]:
+                if "path" in histo:
+                    name = histo["path"]
+                else:
+                    continue
 
-        if len(knownNewAlarms) > 1:
-            msgs.append("There are %d DQM alarms." % len(knownNewAlarms))
-        else:
-            msgs.append("There is %d DQM alarm." % len(knownNewAlarms))
+                # Get the disasbled alarms from the alarm manager:
+                disabledAlarms = []
+                try:
+                    datareq = request.Request(ALARM_MANAGER_URL)
+                    result = request.build_opener(request.ProxyHandler({})).open(
+                        datareq
+                    )
+                    disabledAlarms = json.loads(result.read())
+                except:
+                    # If we're unable to get disabled alarms, assume that all of them are enabled
+                    pass
 
-        msgs.append("\n\nAlarm names are:")
-        for name in knownNewAlarms:
-          msgs.append("\n  %s" % name)
-          if name not in knownAlarms:
-            msgs.append(" (new)")
+                if histo["properties"]["report"]["alarm"] == 1:
+                    if name in disabledAlarms:
+                        logme(
+                            "Histo caused an alarm but it was disabled in the alarm manager: %s"
+                            % name
+                        )
+                    else:
+                        knownNewAlarms.add(name)
+                        logme("Info from the DQM GUI: %s" % str(histo))
 
-        msgs.append("\n")
-        msg = "".join(msgs)
+            # should alarm be triggered
+            alarmsNew = knownNewAlarms.difference(knownAlarms)
+            sendMessage = False
+            isReminder = False
 
-        spoken_msgs = msgs[:2] + [" Check plots in the DQM Error folder."]
-        spoken_msg = "".join(spoken_msgs).replace("DQM", "D Q M")
+            # alarmsRecovered = knownAlarms.difference(knownNewAlarms)
+            if len(alarmsNew) > 0:
+                sendMessage, isReminder = True, False
+                lastMessage = now
+                remindersSent = 0
+            elif len(knownNewAlarms) and remindersSent < REBROADCAST:
+                # situation has not changed, but we still need to 'remind' the shifter
+                elapsed = now - lastMessage
+                delay = (remindersSent + 1) * REMINDERINTERVAL
 
-        send_sound_msg(msg, spoken_msg)
+                if elapsed >= delay:
+                    remindersSent += 1
+                    sendMessage, isReminder = True, True
 
-      knownAlarms = knownNewAlarms
+            if sendMessage:
+                logme("Info from the DQM GUI: %s" % str(histo))
 
-      # Done some heartbeat logging:
-      logme("Daemon woke up. A run was going on. %d active alarm(s)." % len(knownAlarms))
+                msgs = []
+                if isReminder:
+                    msgs.append("Reminder. ")
+                else:
+                    msgs.append("")
 
-    except KeyboardInterrupt, e:
-      sys.exit(0)
+                if len(knownNewAlarms) > 1:
+                    msgs.append("There are %d DQM alarms." % len(knownNewAlarms))
+                else:
+                    msgs.append("There is %d DQM alarm." % len(knownNewAlarms))
 
-    except urllib2.URLError, e:
-      activeURLErrors += 1
-      # It happens from time to time that the daemon can't connect to the GUI
-      # This can have many reasons. Usually it's solved in the next cycle, so
-      # there is no point in alerting people.
-      if activeURLErrors <= 3:
-        logme("Daemon woke up. Couldn't connect to GUI (%d). Going back to "
-              "sleep." % activeURLErrors)
-      # However, when we see more then 3 times in a row that the network
-      # connection is failing, then we start sending emails:
-      else:
-        logme("Daemon woke up. Couldn't connect to GUI for the %dth time! "
-              "Sending mail and going back to sleep." % activeURLErrors)
-        logme('BASEURL: %s', BASEURL)
-        logme('ERROR: %s', e)
-        print_exc()
-        send_email_msg('ERROR: %s\n\n' % e)
-        # Reset counter to -20. Otherwise you would start receiving a message
-        # every 30 seconds now.
-        # At least this way, the next email will only be in >10 minutes.
-        activeURLErrors = -20
+                msgs.append("\n\nAlarm names are:")
+                for name in knownNewAlarms:
+                    msgs.append("\n  %s" % name)
+                    if name not in knownAlarms:
+                        msgs.append(" (new)")
 
-    except Exception, e:
-      logme('ERROR: %s', e)
-      print_exc()
-      send_email_msg('ERROR: %s\n\n' % e)
+                msgs.append("\n")
+                msg = "".join(msgs)
 
-    time.sleep(WAITTIME)
+                spoken_msgs = msgs[:2] + [" Check plots in the DQM Error folder."]
+                spoken_msg = "".join(spoken_msgs).replace("DQM", "D Q M")
+
+                send_sound_msg(msg, spoken_msg)
+
+            knownAlarms = knownNewAlarms
+
+            # Done some heartbeat logging:
+            logme(
+                "Daemon woke up. A run was going on. %d active alarm(s)."
+                % len(knownAlarms)
+            )
+
+        except KeyboardInterrupt as e:
+            sys.exit(0)
+
+        except error.URLError as e:
+            activeURLErrors += 1
+            # It happens from time to time that the daemon can't connect to the GUI
+            # This can have many reasons. Usually it's solved in the next cycle, so
+            # there is no point in alerting people.
+            if activeURLErrors <= 3:
+                logme(
+                    "Daemon woke up. Couldn't connect to GUI (%d). Going back to "
+                    "sleep." % activeURLErrors
+                )
+            # However, when we see more then 3 times in a row that the network
+            # connection is failing, then we start sending emails:
+            else:
+                logme(
+                    "Daemon woke up. Couldn't connect to GUI for the %dth time! "
+                    "Sending mail and going back to sleep." % activeURLErrors
+                )
+                logme("BASEURL: %s", BASEURL)
+                logme("ERROR: %s", e)
+                print_exc()
+                send_email_msg("ERROR: %s\n\n" % e)
+                # Reset counter to -20. Otherwise you would start receiving a message
+                # every 30 seconds now.
+                # At least this way, the next email will only be in >10 minutes.
+                activeURLErrors = -20
+
+        except Exception as e:
+            logme("ERROR: %s", e)
+            print_exc()
+            send_email_msg("ERROR: %s\n\n" % e)
+
+        time.sleep(WAITTIME)
+
 
 if IS_TEST:
-  # If we're in test mode
-  run_test()
+    # If we're in test mode
+    run_test()
 else:
-  # After starting the script, we wait a while before we try, because maybe the
-  # GUI isn't started yet.
-  time.sleep(10)
-  # Now start the real daemon
-  run_daemon()
+    # After starting the script, we wait a while before we try, because maybe the
+    # GUI isn't started yet.
+    time.sleep(10)
+    # Now start the real daemon
+    run_daemon()

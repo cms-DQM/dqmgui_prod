@@ -1,107 +1,159 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import urllib2, re, os, time, sys, json
+import re, os, time, sys
 from traceback import print_exc
-from datetime import datetime
-from urllib import quote_plus
+from Monitoring.Core.Utils import logme
+from urllib import request
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
-BASEURL = sys.argv[1]		# Server's web address
-INDEX = sys.argv[2]		# GUI's index location
-QUOTASFILE = sys.argv[3]	# Location of quotas file
+BASEURL = sys.argv[1]  # Server's web address
+INDEX = sys.argv[2]  # GUI's index location
+QUOTASFILE = sys.argv[3]  # Location of quotas file
 
 # GLOBAL CONSTANTS
-CACHEFILE = "%s/.indexCache" % INDEX	# location of the cache file.
-MINNUMSUBSYS = 13			# minimu number of subsytems needed to keep a run.
+CACHEFILE = "%s/.indexCache" % INDEX  # location of the cache file.
+MINNUMSUBSYS = 13  # minimu number of subsytems needed to keep a run.
 WAITTIME = 15 * 60
-REFRESHINTERVAL = 15 * 24 * 3600	# Time between full cache refreshing.
-MAXPERSISTENCE = 2 * 365 * 24 * 3600	# Max time ANY run/dataset would stay registered in the GUI
-BADQUOTING=re.compile(r'""([^"]*)""')
+REFRESHINTERVAL = 15 * 24 * 3600  # Time between full cache refreshing.
+MAXPERSISTENCE = (
+    2 * 365 * 24 * 3600
+)  # Max time ANY run/dataset would stay registered in the GUI
+BADQUOTING = re.compile(r'""([^"]*)""')
 
 # GLOBAL CONSTANTS - Run Types
 ALL_RUNS = 0xFF
 OTHER_RUN = 0x01
 TEST_RUN = 0x02
-COSMICS_RUN = 0X04
-COLLISIONS_RUN = 0X08
+COSMICS_RUN = 0x04
+COLLISIONS_RUN = 0x08
 
 # Control Variables
 refreshCache = False
 lastRefresh = time.time()
 
+
 # --------------------------------------------------------------------
-def logme(msg, *args):
-  procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+
 
 # Write chache to disk.
 def saveCacheFile(runIndex):
-  f=open(CACHEFILE,"w")
-  f.write(str(runIndex))
-  f.write('\n')
-  f.close()
+    with open(CACHEFILE, "w") as f:
+        f.write(str(runIndex))
+        f.write("\n")
+
 
 # Shorthand to extract GUI information, it fails if the retrieved
 # data is not python format.
-def getGuiData(opener,url):
-  page1 = opener1.open(url)
-  data = page1.read()
-  try:
-    contents = eval(data)
-  except Exception, e:
+def getGuiData(opener, url):
+    page1 = opener.open(url)
+    data = page1.read()
     try:
-      contents = eval(BADQUOTING.subn('"\g<1>"',data)[0])
+        contents = eval(data)
+    except Exception as e:
+        try:
+            contents = eval(BADQUOTING.subn('"\g<1>"', data)[0])
 
-    except Exception, e:
-      raise e
+        except Exception as e:
+            raise e
 
-  finally:
-    page1.close()
+    finally:
+        page1.close()
 
-  return contents
+    return contents
+
 
 # Converts the time from a formatted string to a time-stamp. It is the
 # inverse of the function used in the GUI to print the Run Start time
 # on the title bar.
 def str2time(dateStr):
-  now = time.gmtime()
-  t=(now.tm_year, now.tm_mon, now.tm_mday,
-     now.tm_hour, now.tm_min, 0,
-     now.tm_wday, now.tm_yday, now.tm_isdst)
-  try:
-    tstruct=time.strptime(dateStr,"Today %H:%M")
-    t=(now.tm_year, now.tm_mon, now.tm_mday,
-       tstruct.tm_hour, tstruct.tm_min, 0,
-       now.tm_wday, now.tm_yday, now.tm_isdst)
-  except ValueError:
+    now = time.gmtime()
+    t = (
+        now.tm_year,
+        now.tm_mon,
+        now.tm_mday,
+        now.tm_hour,
+        now.tm_min,
+        0,
+        now.tm_wday,
+        now.tm_yday,
+        now.tm_isdst,
+    )
     try:
-      tstruct=time.strptime(dateStr,"%a %d, %H:%M")
-      t=(now.tm_year, now.tm_mon, tstruct.tm_mday,
-         tstruct.tm_hour, tstruct.tm_min, 0,
-         tstruct.tm_wday, now.tm_yday, now.tm_isdst)
+        tstruct = time.strptime(dateStr, "Today %H:%M")
+        t = (
+            now.tm_year,
+            now.tm_mon,
+            now.tm_mday,
+            tstruct.tm_hour,
+            tstruct.tm_min,
+            0,
+            now.tm_wday,
+            now.tm_yday,
+            now.tm_isdst,
+        )
     except ValueError:
-      try:
-        tstruct=time.strptime(dateStr,"%a %b %d, %H:%M")
-        t=(now.tm_year, tstruct.tm_mon, tstruct.tm_mday,
-           tstruct.tm_hour, tstruct.tm_min, 0,
-           tstruct.tm_wday, now.tm_yday, now.tm_isdst)
-      except ValueError:
         try:
-          tstruct=time.strptime(dateStr.replace(',',' %d,' % now.tm_year),"%a %b %d %Y, %H:%M")
-          t=(now.tm_year, tstruct.tm_mon, tstruct.tm_mday,
-             tstruct.tm_hour, tstruct.tm_min, 0,
-             tstruct.tm_wday, now.tm_yday, now.tm_isdst)
+            tstruct = time.strptime(dateStr, "%a %d, %H:%M")
+            t = (
+                now.tm_year,
+                now.tm_mon,
+                tstruct.tm_mday,
+                tstruct.tm_hour,
+                tstruct.tm_min,
+                0,
+                tstruct.tm_wday,
+                now.tm_yday,
+                now.tm_isdst,
+            )
         except ValueError:
-          tstruct=time.strptime(dateStr,"%a %b %d '%y, %H:%M")
-          t=(tstruct.tm_year, tstruct.tm_mon, tstruct.tm_mday,
-             tstruct.tm_hour, tstruct.tm_min, 0,
-             tstruct.tm_wday, tstruct.tm_yday, now.tm_isdst)
+            try:
+                tstruct = time.strptime(dateStr, "%a %b %d, %H:%M")
+                t = (
+                    now.tm_year,
+                    tstruct.tm_mon,
+                    tstruct.tm_mday,
+                    tstruct.tm_hour,
+                    tstruct.tm_min,
+                    0,
+                    tstruct.tm_wday,
+                    now.tm_yday,
+                    now.tm_isdst,
+                )
+            except ValueError:
+                try:
+                    tstruct = time.strptime(
+                        dateStr.replace(",", " %d," % now.tm_year), "%a %b %d %Y, %H:%M"
+                    )
+                    t = (
+                        now.tm_year,
+                        tstruct.tm_mon,
+                        tstruct.tm_mday,
+                        tstruct.tm_hour,
+                        tstruct.tm_min,
+                        0,
+                        tstruct.tm_wday,
+                        now.tm_yday,
+                        now.tm_isdst,
+                    )
+                except ValueError:
+                    tstruct = time.strptime(dateStr, "%a %b %d '%y, %H:%M")
+                    t = (
+                        tstruct.tm_year,
+                        tstruct.tm_mon,
+                        tstruct.tm_mday,
+                        tstruct.tm_hour,
+                        tstruct.tm_min,
+                        0,
+                        tstruct.tm_wday,
+                        tstruct.tm_yday,
+                        now.tm_isdst,
+                    )
 
-  return time.mktime(t)
+    return time.mktime(t)
+
 
 # --------------------------------------------------------------------
 # The DeleteDaemon uses a combination of the http pages and the python
@@ -137,178 +189,203 @@ def str2time(dateStr):
 # in this case, the quota that gives the run the greatest time of permanence in
 # the index will be the ruling one.
 
-opener1 = urllib2.build_opener(urllib2.ProxyHandler({}))
-sr = re.search(r"dqm/([-a-zA-Z0-9_]+)",BASEURL)
+opener1 = request.build_opener(request.ProxyHandler({}))
+sr = re.search(r"dqm/([-a-zA-Z0-9_]+)", BASEURL)
 if not sr:
-  logme("FATAL:  Couold not identify the site from the BaseURL(%s)",
-        BASEURL)
-  sys.exit(1)
+    logme("FATAL:  Couold not identify the site from the BaseURL(%s)", BASEURL)
+    sys.exit(1)
 
 site = sr.group(1)
 
 # Import QUOTAS
 try:
-  QUOTAS = eval(file(QUOTASFILE).read())
+    with open(QUOTASFILE) as f:
+        QUOTAS = eval(f.read())
 except:
-  logme("ERROR: Invalid quotas file")
-  print_exc()
-  sys.exit(2)
+    logme("ERROR: Invalid quotas file")
+    print_exc()
+    sys.exit(2)
 
 while True:
-  try:
+    try:
+        # Read index cache, if there's a problem ignore and recreate the cache
+        runDS = {}
+        now = time.time()
+        if REFRESHINTERVAL < now - lastRefresh:
+            refreshCache = True
+            lastRefresh = now
 
-    # Read index cache, if there's a problem ignore and recreate the cache
-    runDS = {}
-    now = time.time()
-    if REFRESHINTERVAL < now - lastRefresh:
-      refreshCache = True
-      lastRefresh = now
+        if os.path.exists(CACHEFILE) and refreshCache == False:
+            try:
+                with open(CACHEFILE) as f:
+                    runDS = eval(f.read())
+            except Exception as e:
+                refreshCache = True
+                raise e
 
-    if os.path.exists(CACHEFILE) and refreshCache == False:
-      try:
-        runDS = eval(file(CACHEFILE).read())
-      except Exception, e:
-        refreshCache = True
-        raise e
+        # Get list of new runs
+        new = {}
+        page1 = opener1.open("%s/data/json/samples" % BASEURL)
+        data = eval(page1.read())
+        for sample in data["samples"]:
+            if sample["type"] == "live":
+                continue
 
-    # Get list of new runs
-    new = {}
-    page1 = opener1.open("%s/data/json/samples" % BASEURL)
-    data = eval(page1.read())
-    for sample in data["samples"]:
-      if sample["type"] == 'live':
-        continue
+            def cmp(a, b):
+                return (a > b) - (a < b)
 
-      runDS.setdefault(sample["type"], {})
-      for tp in sorted(sample["items"],cmp=lambda x,y: cmp(x['run'],y['run']))[:-1]:
-        newSample = runDS[tp["type"]].setdefault(tp["dataset"], {}).setdefault(tp["run"], {})
-        if newSample == {}:
-          new.setdefault((tp["type"], tp["dataset"], tp["run"]), newSample)
+            runDS.setdefault(sample["type"], {})
+            for tp in sorted(sample["items"], cmp=lambda x, y: cmp(x["run"], y["run"]))[
+                :-1
+            ]:
+                newSample = (
+                    runDS[tp["type"]]
+                    .setdefault(tp["dataset"], {})
+                    .setdefault(tp["run"], {})
+                )
+                if newSample == {}:
+                    new.setdefault((tp["type"], tp["dataset"], tp["run"]), newSample)
 
-    del data
+        del data
 
-    # Update information for new runs
-    for key, sample in new.items():
-      dataType = key[0]
-      dsName = key [1]
-      run = key[2]
-      url = "%s/data/json/archive/%s/%s" % (BASEURL,run,dsName)
-      contents = getGuiData(opener1,url)
-      sample["numSubdirs"] = len(contents['contents'])
-      sample["runType"] = OTHER_RUN
-      sample["skip"] = False
-      url = "%s/data/json/archive/%s/%s/Info/ProvInfo/" %  (BASEURL,run,dsName)
-      contents = getGuiData(opener1,url)
-      for obj in contents["contents"][2:]:
-        if 'obj' not in obj.keys():
-          continue
+        # Update information for new runs
+        for key, sample in new.items():
+            dataType = key[0]
+            dsName = key[1]
+            run = key[2]
+            url = "%s/data/json/archive/%s/%s" % (BASEURL, run, dsName)
+            contents = getGuiData(opener1, url)
+            sample["numSubdirs"] = len(contents["contents"])
+            sample["runType"] = OTHER_RUN
+            sample["skip"] = False
+            url = "%s/data/json/archive/%s/%s/Info/ProvInfo/" % (BASEURL, run, dsName)
+            contents = getGuiData(opener1, url)
+            for obj in contents["contents"][2:]:
+                if "obj" not in obj.keys():
+                    continue
 
-        if obj["obj"] == "isCollisionsRun" and sample["runType"] != COSMICS_RUN:
-          if int(obj["value"]) == 0:
-            sample["runType"] = TEST_RUN
-          else:
-            sample["runType"] = COLLISIONS_RUN
+                if obj["obj"] == "isCollisionsRun" and sample["runType"] != COSMICS_RUN:
+                    if int(obj["value"]) == 0:
+                        sample["runType"] = TEST_RUN
+                    else:
+                        sample["runType"] = COLLISIONS_RUN
 
-        elif obj["obj"] == "hltKey" and "Cosmics" in obj["value"]:
-          sample["runType"] = COSMICS_RUN
+                elif obj["obj"] == "hltKey" and "Cosmics" in obj["value"]:
+                    sample["runType"] = COSMICS_RUN
 
-      page1 = opener1.open("%s/start?runnr=%s;dataset=%s;sampletype=%s" %
-                  (BASEURL,run,dsName,dataType))
-      session = re.search(r"location.replace\('/dqm/%s/session/([-A-Za-z0-9_]+)'\)" % site,
-                  page1.read()).group(1)
-      url = "%s/session/%s/state" %  (BASEURL,session)
-      contents = getGuiData(opener1,url)
-      for item in contents:
-        if "DQMHeaderRow" == item["kind"]:
-          if item['lumi'] == '(None)':
-            logme("WARNING: Run %s with dataset %s has no valid EventInfo folder",run,dsName)
-            sample["skip"] = True
-            del runDS[key[0]][key[1]][key[2]]
-            continue
+            page1 = opener1.open(
+                "%s/start?runnr=%s;dataset=%s;sampletype=%s"
+                % (BASEURL, run, dsName, dataType)
+            )
+            session = re.search(
+                r"location.replace\('/dqm/%s/session/([-A-Za-z0-9_]+)'\)" % site,
+                page1.read(),
+            ).group(1)
+            url = "%s/session/%s/state" % (BASEURL, session)
+            contents = getGuiData(opener1, url)
+            for item in contents:
+                if "DQMHeaderRow" == item["kind"]:
+                    if item["lumi"] == "(None)":
+                        logme(
+                            "WARNING: Run %s with dataset %s has no valid EventInfo folder",
+                            run,
+                            dsName,
+                        )
+                        sample["skip"] = True
+                        del runDS[key[0]][key[1]][key[2]]
+                        continue
 
-          if item['runstart'] == '(Not recorded)':
-            sample["skip"] = True
-            del runDS[key[0]][key[1]][key[2]]
-            continue
+                    if item["runstart"] == "(Not recorded)":
+                        sample["skip"] = True
+                        del runDS[key[0]][key[1]][key[2]]
+                        continue
 
-          sample["Lumis"] = int(item['lumi'].replace("'",""))
-          sample["runStartTimeStamp"] = str2time(item['runstart'])
-          sample["runEndTimeStamp"] = sample["runStartTimeStamp"]+sample["Lumis"]*22.3
+                    sample["Lumis"] = int(item["lumi"].replace("'", ""))
+                    sample["runStartTimeStamp"] = str2time(item["runstart"])
+                    sample["runEndTimeStamp"] = (
+                        sample["runStartTimeStamp"] + sample["Lumis"] * 22.3
+                    )
 
-    saveCacheFile(runDS)
+        saveCacheFile(runDS)
 
-    #Apply quotas
-    remove = []
-    now = time.time()
-    for dataType in runDS:
-      for dsName in runDS[dataType]:
-        applicableQuotas=[]
-        for qDataType in QUOTAS:
-          dt = re.match(qDataType,dataType)
-          if dt:
-            for qDsName in QUOTAS[qDataType]:
-              dsn = re.match(qDsName,dsName)
-              if dsn:
-                applicableQuotas = QUOTAS[qDataType][qDsName]
+        # Apply quotas
+        remove = []
+        now = time.time()
+        for dataType in runDS:
+            for dsName in runDS[dataType]:
+                applicableQuotas = []
+                for qDataType in QUOTAS:
+                    dt = re.match(qDataType, dataType)
+                    if dt:
+                        for qDsName in QUOTAS[qDataType]:
+                            dsn = re.match(qDsName, dsName)
+                            if dsn:
+                                applicableQuotas = QUOTAS[qDataType][qDsName]
 
-        for run, runInfo in runDS[dataType][dsName].items():
-          if runInfo["skip"]:
-            continue
+                for run, runInfo in runDS[dataType][dsName].items():
+                    if runInfo["skip"]:
+                        continue
 
-          if runInfo["runEndTimeStamp"] < now - MAXPERSISTENCE:
-            remove.append([run, dsName, dataType])
-            continue
+                    if runInfo["runEndTimeStamp"] < now - MAXPERSISTENCE:
+                        remove.append([run, dsName, dataType])
+                        continue
 
-          if len(applicableQuotas) == 0:
-            continue
+                    if len(applicableQuotas) == 0:
+                        continue
 
-          maxPersistance = 1
-          for quota in applicableQuotas:
-            if runInfo["runType"] & quota[0] and runInfo["Lumis"] > quota[2]:
-              if maxPersistance < quota[1]:
-                maxPersistance = quota[1]
+                    maxPersistance = 1
+                    for quota in applicableQuotas:
+                        if (
+                            runInfo["runType"] & quota[0]
+                            and runInfo["Lumis"] > quota[2]
+                        ):
+                            if maxPersistance < quota[1]:
+                                maxPersistance = quota[1]
 
-          if dataType != 'online_data' and maxPersistance == 1:
-            continue
+                    if dataType != "online_data" and maxPersistance == 1:
+                        continue
 
-          if runInfo["runEndTimeStamp"] < now - ( maxPersistance * 24 * 3600) or runInfo["numSubdirs"] <= MINNUMSUBSYS:
-            remove.append([run, dsName, dataType])
+                    if (
+                        runInfo["runEndTimeStamp"] < now - (maxPersistance * 24 * 3600)
+                        or runInfo["numSubdirs"] <= MINNUMSUBSYS
+                    ):
+                        remove.append([run, dsName, dataType])
 
-    # Proceed to remove
-    for run, dsn, dt in remove:
-      try:
-        refreshCache = True
-        lFile=open("%s/lock" % INDEX ,"w+")
-        lockf(lFile,LOCK_EX)
-        lFile.write(str(os.getpid()))
+        # Proceed to remove
+        for run, dsn, dt in remove:
+            with open(f"{INDEX}/lock", "w+") as lFile:
+                try:
+                    refreshCache = True
+                    lockf(lFile, LOCK_EX)
+                    lFile.write(str(os.getpid()))
 
-        # Print a small diagnostic
-        logme('INFO: Removing run# %s'
-              ' from the \'%s\' dataset', run,dsn)
-        rc = os.system("visDQMIndex remove --dataset "
-                       "%s --run %s %s" % (dsn,run,INDEX))
-        if rc != 0:
-          logme('command failed with exit code %d', rc)
-          assert False
+                    # Print a small diagnostic
+                    logme("INFO: Removing run# %s" " from the '%s' dataset", run, dsn)
+                    rc = os.system(
+                        "visDQMIndex remove --dataset "
+                        "%s --run %s %s" % (dsn, run, INDEX)
+                    )
+                    if rc != 0:
+                        logme("command failed with exit code %d", rc)
+                        assert False
 
-        # Since everything worked only write cache on the end of the cycle
-        refreshCache = False
+                    # Since everything worked only write cache on the end of the cycle
+                    refreshCache = False
 
-      finally:
-        lockf(lFile,LOCK_UN)
-        lFile.close()
-        del runDS[dt][dsn][run]
-        if refreshCache:
-          logme('INFO: saving cache file')
-          saveCacheFile(runDS)
+                finally:
+                    lockf(lFile, LOCK_UN)
+                    del runDS[dt][dsn][run]
+                    if refreshCache:
+                        logme("INFO: saving cache file")
+                        saveCacheFile(runDS)
 
-    saveCacheFile(runDS)
+        saveCacheFile(runDS)
 
-  except KeyboardInterrupt, e:
-    sys.exit(0)
+    except KeyboardInterrupt as e:
+        sys.exit(0)
 
-  except Exception, e:
-    logme('error: %s', e)
-    print_exc()
+    except Exception as e:
+        logme("error: %s", e)
+        print_exc()
 
-  time.sleep(WAITTIME)
+    time.sleep(WAITTIME)

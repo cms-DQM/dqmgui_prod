@@ -1,46 +1,67 @@
-import re, time, calendar, logging
-from cherrypy import log, Tool, tools, request
+import os, re, time, calendar, logging, sys
+from cherrypy import log, Tool, request
+from cherrypy._cpreqbody import Part
+from datetime import datetime
+import inspect
 
-RE_DIGIT_SEQ = re.compile(r'([-+]?\d+)')
-RE_THOUSANDS = re.compile(r'(\d)(\d{3}($|\D))')
+RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
+RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
+
+logger = logging.getLogger(__name__)
+h = logging.StreamHandler(stream=sys.stderr)
+logger.addHandler(h)
+logger.setLevel(logging.INFO)
+
+
+def logme(msg: str, *args, level=logging.INFO):
+    procid = "[%s/%d]" % (inspect.stack()[1].filename.rsplit("/", 1)[-1], os.getpid())
+    if "ERROR" in msg:
+        level = logging.ERROR
+    logger.log(msg=f"{datetime.now()} {procid} " + msg % args, level=level)
+
 
 # Logging methods.
 def _logerr(msg):
-  log("ERROR: " + msg.replace("\n", " ~~ "),
-      severity=logging.ERROR)
+    log("ERROR: " + msg.replace("\n", " ~~ "), severity=logging.ERROR)
+
 
 def _logwarn(msg):
-  log("WARNING: " + msg.replace("\n", " ~~ "),
-      severity=logging.WARNING)
+    log("WARNING: " + msg.replace("\n", " ~~ "), severity=logging.WARNING)
+
 
 def _loginfo(msg):
-  log("INFO: " + msg.replace("\n", " ~~ "),
-      severity=logging.INFO)
+    log("INFO: " + msg.replace("\n", " ~~ "), severity=logging.INFO)
+
 
 # Format numbers nicely.
 def thousands(s):
-  while True:
-    r = re.sub(RE_THOUSANDS, r"\1'\2", s)
-    if r == s:
-      return r
-    else:
-      s = r
-  return s
+    while True:
+        r = re.sub(RE_THOUSANDS, r"\1'\2", s)
+        if r == s:
+            return r
+        else:
+            s = r
+    return s
+
 
 # Sort naturally.
 def natconvert(list):
-  return [ ((i % 2 == 0 and (list[i],)) or (int(list[i]),))[0]
-	   for i in xrange(0, len(list)) ]
+    return [
+        ((i % 2 == 0 and (list[i],)) or (int(list[i]),))[0] for i in range(0, len(list))
+    ]
+
 
 def natsort(list):
-  temp = [ (natconvert(re.split(RE_DIGIT_SEQ, s)), s) for s in list ]
-  temp.sort()
-  return [ t[1] for t in temp ]
+    temp = [(natconvert(re.split(RE_DIGIT_SEQ, s)), s) for s in list]
+    temp.sort()
+    return [t[1] for t in temp]
+
 
 def natsorted(list):
-  temp = [ (natconvert(re.split(RE_DIGIT_SEQ, s)), s) for s in list ]
-  temp.sort()
-  return [ t[1] for t in temp ]
+    temp = [(natconvert(re.split(RE_DIGIT_SEQ, s)), s) for s in list]
+    temp.sort()
+    return [t[1] for t in temp]
+
 
 # Generate time series from START to END using SPAN as the unit.
 #
@@ -59,64 +80,71 @@ def natsorted(list):
 # in and ends in an interval that contains END.  If START == END,
 # then returns a list of a single tuple containing START and END.
 def timeseries(span, start, end):
-  if span == 'hour':
-    # Convert first time to UTC hour, then make a series of hours.
-    low = int(start / 3600)
-    high = max(low+1, int((end+3599) / 3600))
-    return [(t*3600, (t+1)*3600) for t in xrange(low, high)]
-  elif span == 'day':
-    # Convert first time to UTC day at 00:00, then make a series of days.
-    low = int(start / 86400)
-    high = max(low+1, int((end+86399) / 86400))
-    return [(t*86400, (t+1)*86400) for t in xrange(low, high)]
-  elif span == 'week':
-    # Convert first time to previous Monday.  Then make a
-    # time series of weeks until we pass the end date.
-    low = int(start/86400) - time.gmtime(start).tm_wday
-    high = max(low+1, int((end+86399) / 86400))
-    return [(t*86400, (t+7)*86400) for t in xrange(low, high, 7)]
-  elif span == 'month':
-    # Create a time series for each first of the month.
-    series = []
-    limit = int((end+86399)/86400)*86400
-    t = time.gmtime(start)
-    year = t.tm_year
-    month = t.tm_mon
-    day = calendar.timegm((year, month, 1, 0, 0, 0, 0, 0, 0))
-    while True:
-      low = day
-      month += 1
-      if month > 12:
-	month = 1
-	year += 1
-      day = calendar.timegm((year, month, 1, 0, 0, 0, 0, 0, 0))
-      series.append((low, day))
-      if day >= limit:
-	break
-    return series
-  elif span == 'year':
-    # Create a series of the first of January of each year.
-    series = []
-    limit = int((end+86399)/86400)*86400
-    t = time.gmtime(start)
-    year = t.tm_year
-    day = calendar.timegm((year, 1, 1, 0, 0, 0, 0, 0, 0))
-    while True:
-      low = day
-      year += 1
-      day = calendar.timegm((year, 1, 1, 0, 0, 0, 0, 0, 0))
-      series.append((low, day))
-      if day >= limit:
-	break
-    return series
+    if span == "hour":
+        # Convert first time to UTC hour, then make a series of hours.
+        low = int(start / 3600)
+        high = max(low + 1, int((end + 3599) / 3600))
+        return [(t * 3600, (t + 1) * 3600) for t in range(low, high)]
+    elif span == "day":
+        # Convert first time to UTC day at 00:00, then make a series of days.
+        low = int(start / 86400)
+        high = max(low + 1, int((end + 86399) / 86400))
+        return [(t * 86400, (t + 1) * 86400) for t in range(low, high)]
+    elif span == "week":
+        # Convert first time to previous Monday.  Then make a
+        # time series of weeks until we pass the end date.
+        low = int(start / 86400) - time.gmtime(start).tm_wday
+        high = max(low + 1, int((end + 86399) / 86400))
+        return [(t * 86400, (t + 7) * 86400) for t in range(low, high, 7)]
+    elif span == "month":
+        # Create a time series for each first of the month.
+        series = []
+        limit = int((end + 86399) / 86400) * 86400
+        t = time.gmtime(start)
+        year = t.tm_year
+        month = t.tm_mon
+        day = calendar.timegm((year, month, 1, 0, 0, 0, 0, 0, 0))
+        while True:
+            low = day
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+            day = calendar.timegm((year, month, 1, 0, 0, 0, 0, 0, 0))
+            series.append((low, day))
+            if day >= limit:
+                break
+        return series
+    elif span == "year":
+        # Create a series of the first of January of each year.
+        series = []
+        limit = int((end + 86399) / 86400) * 86400
+        t = time.gmtime(start)
+        year = t.tm_year
+        day = calendar.timegm((year, 1, 1, 0, 0, 0, 0, 0, 0))
+        while True:
+            low = day
+            year += 1
+            day = calendar.timegm((year, 1, 1, 0, 0, 0, 0, 0, 0))
+            series.append((low, day))
+            if day >= limit:
+                break
+        return series
+
 
 # Format TIME in numerical format as unit of SPAN ("hour", "day", "week" or "month").
 def numtimefmt(span, timeval):
-  if span == 'hour': return time.strftime('%Y%m%dZ%H00', time.gmtime(int(timeval)))
-  elif span == 'day': return time.strftime('%Y%m%d', time.gmtime(int(timeval)))
-  elif span == 'week': return time.strftime('%Y%V', time.gmtime(int(timeval)))
-  elif span == 'month': return time.strftime('%Y%m', time.gmtime(int(timeval)))
-  elif span == 'year': return time.strftime('%Y', time.gmtime(int(timeval)))
+    if span == "hour":
+        return time.strftime("%Y%m%dZ%H00", time.gmtime(int(timeval)))
+    elif span == "day":
+        return time.strftime("%Y%m%d", time.gmtime(int(timeval)))
+    elif span == "week":
+        return time.strftime("%Y%V", time.gmtime(int(timeval)))
+    elif span == "month":
+        return time.strftime("%Y%m", time.gmtime(int(timeval)))
+    elif span == "year":
+        return time.strftime("%Y", time.gmtime(int(timeval)))
+
 
 # Convert a storage size into a numeric value (as bytes).  Storage
 # sizes are a floating point number optionally followed by a letter
@@ -124,49 +152,70 @@ def numtimefmt(span, timeval):
 # peta- and exabytes, respectively.  A raw number is accepted as
 # well, returned as such, i.e. as bytes.
 def sizevalue(val):
-  m = re.match(r'^([-+\d.Ee]+)([kMGTPE])$', val)
-  if m:
-    scale = { 'k': 2**10, 'M': 2**20, 'G': 2**30, 'T': 2**40, 'P': 2**50, 'E': 2**60 }
-    return float(m.group(1)) * scale[m.group(2)]
-  else:
-    return float(val)
+    m = re.match(r"^([-+\d.Ee]+)([kMGTPE])$", val)
+    if m:
+        scale = {
+            "k": 2**10,
+            "M": 2**20,
+            "G": 2**30,
+            "T": 2**40,
+            "P": 2**50,
+            "E": 2**60,
+        }
+        return float(m.group(1)) * scale[m.group(2)]
+    else:
+        return float(val)
+
 
 class ParameterManager(Tool):
-  def __init__(self):
-    Tool.__init__(self, 'before_handler',
-                  self.load, priority=10)
+    def __init__(self):
+        Tool.__init__(self, "before_handler", self.load, priority=10)
 
-  def load(self):
-    req = request
-
-    # Due to a recent (observed on 2019-01-22) change in Google url shortening
-    # API, the returned full url is url encoded when it shoudn't be.
-    # This is a workaround for this issue.
-    # More info: https://its.cern.ch/jira/browse/PDMVRELVALS-5
-    params = {}
-    for k in req.params.keys():
-        if '=' in k:
-            parts = k.split('=', 1)
-            params[parts[0]] = parts[1]
-        else:
-            params[k] = req.params[k]
-
-    req.params = params
-
-    ## Retrieve all parameters associated to the request and change
-    ## unicode strings back to str, so that all the C++ code that uses
-    ## them is happy.
-
-    for k in req.params.keys():
-      if isinstance(req.params[k], unicode):
-        try:
-          req.params[k] = str(req.params[k])
-        except Exception, e:
-          _logerr("FAILURE: cannot convert unicode value: " + ''.join([hex(ord(c)) for c in req.params[k]]))
-      if isinstance(req.params[k], list):
-        for i in xrange(len(req.params[k])):
-          if isinstance(req.params[k][i], unicode):
+    def __check_decode(self, params_dict, key, value):
+        """
+        Helper function for code reuse when parsing arguments
+        """
+        is_unicode = True
+        if isinstance(value, bytes):
             try:
-              req.params[k][i] = str(req.params[k][i])
-            except Exception, e:
-              _logerr("FAILURE: cannot convert unicode value: " + ''.join([hex(ord(c)) for c in req.params[k][i]]))
+                value.decode("utf-8")
+            except UnicodeError:
+                is_unicode = False
+                if is_unicode:
+                    try:
+                        params_dict[key] = str(value)
+                    except Exception as e:
+                        _logerr(
+                            "FAILURE: cannot convert unicode value: "
+                            + "".join([hex(ord(c)) for c in value])
+                        )
+
+    def load(self):
+        req = request
+
+        # Due to a recent (observed on 2019-01-22) change in Google url shortening
+        # API, the returned full url is url encoded when it shoudn't be.
+        # This is a workaround for this issue.
+        # More info: https://its.cern.ch/jira/browse/PDMVRELVALS-5
+        params = {}
+        for k in req.params.keys():
+            if "=" in k:
+                parts = k.split("=", 1)
+                params[parts[0]] = parts[1]
+            else:
+                params[k] = req.params[k]
+
+        req.params = params
+
+        ## Retrieve all parameters associated to the request and change
+        ## unicode strings back to str, so that all the C++ code that uses
+        ## them is happy.
+
+        for k in req.params.keys():
+            # Don't convert Multipart data.
+            if isinstance(req.params[k], Part):
+                continue
+            self.__check_decode(req.params, k, req.params[k])
+            if isinstance(req.params[k], list):
+                for i in range(len(req.params[k])):
+                    self.__check_decode(req.params[k], i, req.params[k][i])

@@ -1,19 +1,19 @@
 #ifndef DQM_VISDQMINDEX_H
-# define DQM_VISDQMINDEX_H
+#define DQM_VISDQMINDEX_H
 
-# include "DQM/VisDQMFile.h"
-# include "classlib/iobase/Filename.h"
-# include "classlib/utils/Time.h"
-# include <pthread.h>
-# include <map>
+#include "DQM/VisDQMFile.h"
+#include "classlib/iobase/Filename.h"
+#include "classlib/utils/Time.h"
+#include <map>
+#include <pthread.h>
 
 // Define the sizes to be used for the StringAtomTrees
 
-# define OBJECTNAMES 5000000
-# define PATHNAMES   1000000
-# define DATASETNAMES 100000
-# define CMSSWNAMES    10000
-# define STREAMERS       100
+#define OBJECTNAMES 5000000
+#define PATHNAMES 1000000
+#define DATASETNAMES 100000
+#define CMSSWNAMES 10000
+#define STREAMERS 100
 
 class VisDQMCache;
 
@@ -173,203 +173,198 @@ class VisDQMCache;
    only guarantee is that the string table in the master catalogue is
    consistent with the data files.  It is however very easy and
    efficient to build and use a #StringAtomTree for the names. */
-class VisDQMIndex
-{
+class VisDQMIndex {
 public:
   // ------------------------------------------------------------
-  static const uint64_t MASTER_SAMPLE_RECORD   	   = ((uint64_t) 0) << 32;
-  static const uint64_t MASTER_SOURCE_PATHNAME 	   = ((uint64_t) 1) << 32;
-  static const uint64_t MASTER_DATASET_NAME    	   = ((uint64_t) 2) << 32;
-  static const uint64_t MASTER_CMSSW_VERSION   	   = ((uint64_t) 3) << 32;
-  static const uint64_t MASTER_OBJECT_NAME     	   = ((uint64_t) 4) << 32;
-  static const uint64_t MASTER_TSTREAMERINFO   	   = ((uint64_t) 5) << 32;
+  static const uint64_t MASTER_SAMPLE_RECORD = ((uint64_t)0) << 32;
+  static const uint64_t MASTER_SOURCE_PATHNAME = ((uint64_t)1) << 32;
+  static const uint64_t MASTER_DATASET_NAME = ((uint64_t)2) << 32;
+  static const uint64_t MASTER_CMSSW_VERSION = ((uint64_t)3) << 32;
+  static const uint64_t MASTER_OBJECT_NAME = ((uint64_t)4) << 32;
+  static const uint64_t MASTER_TSTREAMERINFO = ((uint64_t)5) << 32;
 
-  static const uint16_t MASTER_FILE_INFO           = 0;
-  static const uint16_t MASTER_FILE_DATA           = 1;
+  static const uint16_t MASTER_FILE_INFO = 0;
+  static const uint16_t MASTER_FILE_DATA = 1;
 
-  static const uint32_t SUMMARY_PROP_TYPE_MASK 	   = 0x000000ff;
-  static const uint32_t SUMMARY_PROP_TYPE_SCALAR   = 0x0000000f;
-  static const uint32_t SUMMARY_PROP_TYPE_INVALID  = 0x00000000;
-  static const uint32_t SUMMARY_PROP_TYPE_INT      = 0x00000001;
-  static const uint32_t SUMMARY_PROP_TYPE_REAL     = 0x00000002;
-  static const uint32_t SUMMARY_PROP_TYPE_STRING   = 0x00000003;
-  static const uint32_t SUMMARY_PROP_TYPE_TH1F 	   = 0x00000010;
-  static const uint32_t SUMMARY_PROP_TYPE_TH1S 	   = 0x00000011;
-  static const uint32_t SUMMARY_PROP_TYPE_TH1D 	   = 0x00000012;
-  static const uint32_t SUMMARY_PROP_TYPE_TH1I	   = 0x00000013;
-  static const uint32_t SUMMARY_PROP_TYPE_TH2F 	   = 0x00000020;
-  static const uint32_t SUMMARY_PROP_TYPE_TH2S 	   = 0x00000021;
-  static const uint32_t SUMMARY_PROP_TYPE_TH2D 	   = 0x00000022;
-  static const uint32_t SUMMARY_PROP_TYPE_TH2I	   = 0x00000023;
-  static const uint32_t SUMMARY_PROP_TYPE_TH3F 	   = 0x00000030;
-  static const uint32_t SUMMARY_PROP_TYPE_TH3S 	   = 0x00000031;
-  static const uint32_t SUMMARY_PROP_TYPE_TH3D 	   = 0x00000032;
-  static const uint32_t SUMMARY_PROP_TYPE_TPROF	   = 0x00000040;
-  static const uint32_t SUMMARY_PROP_TYPE_TPROF2D  = 0x00000041;
+  static const uint32_t SUMMARY_PROP_TYPE_MASK = 0x000000ff;
+  static const uint32_t SUMMARY_PROP_TYPE_SCALAR = 0x0000000f;
+  static const uint32_t SUMMARY_PROP_TYPE_INVALID = 0x00000000;
+  static const uint32_t SUMMARY_PROP_TYPE_INT = 0x00000001;
+  static const uint32_t SUMMARY_PROP_TYPE_REAL = 0x00000002;
+  static const uint32_t SUMMARY_PROP_TYPE_STRING = 0x00000003;
+  static const uint32_t SUMMARY_PROP_TYPE_TH1F = 0x00000010;
+  static const uint32_t SUMMARY_PROP_TYPE_TH1S = 0x00000011;
+  static const uint32_t SUMMARY_PROP_TYPE_TH1D = 0x00000012;
+  static const uint32_t SUMMARY_PROP_TYPE_TH1I = 0x00000013;
+  static const uint32_t SUMMARY_PROP_TYPE_TH2F = 0x00000020;
+  static const uint32_t SUMMARY_PROP_TYPE_TH2S = 0x00000021;
+  static const uint32_t SUMMARY_PROP_TYPE_TH2D = 0x00000022;
+  static const uint32_t SUMMARY_PROP_TYPE_TH2I = 0x00000023;
+  static const uint32_t SUMMARY_PROP_TYPE_TH3F = 0x00000030;
+  static const uint32_t SUMMARY_PROP_TYPE_TH3S = 0x00000031;
+  static const uint32_t SUMMARY_PROP_TYPE_TH3D = 0x00000032;
+  static const uint32_t SUMMARY_PROP_TYPE_TPROF = 0x00000040;
+  static const uint32_t SUMMARY_PROP_TYPE_TPROF2D = 0x00000041;
   static const uint32_t SUMMARY_PROP_TYPE_DATABLOB = 0x00000050;
 
-  static const uint32_t SUMMARY_PROP_REPORT_MASK   = 0x00000f00;
-  static const uint32_t SUMMARY_PROP_REPORT_CLEAR  = 0x00000000;
-  static const uint32_t SUMMARY_PROP_REPORT_ERROR  = 0x00000100;
-  static const uint32_t SUMMARY_PROP_REPORT_WARN   = 0x00000200;
-  static const uint32_t SUMMARY_PROP_REPORT_OTHER  = 0x00000400;
-  static const uint32_t SUMMARY_PROP_REPORT_ALARM  = (SUMMARY_PROP_REPORT_ERROR
-						      | SUMMARY_PROP_REPORT_WARN
-						      | SUMMARY_PROP_REPORT_OTHER);
+  static const uint32_t SUMMARY_PROP_REPORT_MASK = 0x00000f00;
+  static const uint32_t SUMMARY_PROP_REPORT_CLEAR = 0x00000000;
+  static const uint32_t SUMMARY_PROP_REPORT_ERROR = 0x00000100;
+  static const uint32_t SUMMARY_PROP_REPORT_WARN = 0x00000200;
+  static const uint32_t SUMMARY_PROP_REPORT_OTHER = 0x00000400;
+  static const uint32_t SUMMARY_PROP_REPORT_ALARM =
+      (SUMMARY_PROP_REPORT_ERROR | SUMMARY_PROP_REPORT_WARN |
+       SUMMARY_PROP_REPORT_OTHER);
 
   static const uint32_t SUMMARY_PROP_HAS_REFERENCE = 0x00001000;
-  static const uint32_t SUMMARY_PROP_TAGGED        = 0x00002000;
-  static const uint32_t SUMMARY_PROP_ACCUMULATE    = 0x00004000;
-  static const uint32_t SUMMARY_PROP_RESET         = 0x00008000;
+  static const uint32_t SUMMARY_PROP_TAGGED = 0x00002000;
+  static const uint32_t SUMMARY_PROP_ACCUMULATE = 0x00004000;
+  static const uint32_t SUMMARY_PROP_RESET = 0x00008000;
 
-  static const uint32_t SUMMARY_PROP_NEW           = 0x00010000;
-  static const uint32_t SUMMARY_PROP_RECEIVED      = 0x00020000;
-  static const uint32_t SUMMARY_PROP_DEAD          = 0x00080000;
+  static const uint32_t SUMMARY_PROP_NEW = 0x00010000;
+  static const uint32_t SUMMARY_PROP_RECEIVED = 0x00020000;
+  static const uint32_t SUMMARY_PROP_DEAD = 0x00080000;
   static const uint32_t SUMMARY_PROP_EFFICIENCY_PLOT = 0x00200000;
 
-  static const unsigned STATS_X                    = 0;
-  static const unsigned STATS_Y                    = 1;
-  static const unsigned STATS_Z                    = 2;
-  static const unsigned STATS_MIN                  = 0;
-  static const unsigned STATS_MAX                  = 1;
+  static const unsigned STATS_X = 0;
+  static const unsigned STATS_Y = 1;
+  static const unsigned STATS_Z = 2;
+  static const unsigned STATS_MIN = 0;
+  static const unsigned STATS_MAX = 1;
 
   // ------------------------------------------------------------
   /** Information about one sample (dataset/run). */
-  struct Sample
-  {
+  struct Sample {
     /** The unix time stamp of the first import to the DQM index. */
-    uint64_t		firstImportTime;
+    uint64_t firstImportTime;
 
     /** The unix time stamp of the most recent import to the DQM index. */
-    uint64_t		lastImportTime;
+    uint64_t lastImportTime;
 
     /** The number of times the index has been refreshed for this sample. */
-    uint32_t		importVersion;
+    uint32_t importVersion;
 
     /** The file index of the summary and stats (0), and object data
-	(1) files.  The upper 16 bits identify the file index and the
-	lower 16 the version of that file. */
-    uint32_t		files[2];
+        (1) files.  The upper 16 bits identify the file index and the
+        lower 16 the version of that file. */
+    uint32_t files[2];
 
     /** B-tree string index delta from #MASTER_SOURCE_PATHNAME for the
-	name of the original source from which the last version of
-	this DQM data was imported from. */
-    uint32_t		sourceFileIdx;
+        name of the original source from which the last version of
+        this DQM data was imported from. */
+    uint32_t sourceFileIdx;
 
     /** B-tree string index delta from #MASTER_DATASET_NAME for the
-	dataset name.  */
-    uint32_t		datasetNameIdx;
+        dataset name.  */
+    uint32_t datasetNameIdx;
 
     /** B-tree string index delta from #MASTER_TSTREAMERINFO for the
-	serialised ROOT TStreamerInfo. */
-    uint32_t		streamerInfoIdx;
+        serialised ROOT TStreamerInfo. */
+    uint32_t streamerInfoIdx;
 
     /** B-tree string index delta from #MASTER_CMSSW_VERSION for the
         name of the CMSSW release for release validation samples. */
-    uint32_t		cmsswVersion;
+    uint32_t cmsswVersion;
 
     /** The run number; generally one for monte carlo data. */
-    int32_t		runNumber;
+    int32_t runNumber;
 
     /** Number of monitor element objects in this sample. */
-    uint32_t		numObjects;
+    uint32_t numObjects;
 
     /** The number of events over which DQM data was collected. */
-    uint64_t		numEvents;
+    uint64_t numEvents;
 
     /** The number of lumi sections over which DQM data was collected. */
-    uint64_t		numLumiSections;
+    uint64_t numLumiSections;
 
     /** The time stamp when the run originally started. */
-    uint64_t		runStartTime;
+    uint64_t runStartTime;
 
     /** The time stamp of when the DQM data was produced. */
-    uint64_t		processedTime;
+    uint64_t processedTime;
   };
 
   // ------------------------------------------------------------
   /** Information about one monitor element in a sample. */
-  struct Summary
-  {
+  struct Summary {
     /** Type and other properties of the monitor element, including
         quality test summary and alarm condition. */
-    uint32_t		properties;
+    uint32_t properties;
 
     /** Amount of data that follows for scalar representation, if
-	non-zero a null-terminated string of this length follows. */
-    uint32_t		dataLength;
+        non-zero a null-terminated string of this length follows. */
+    uint32_t dataLength;
 
     /** Amount of data that follows for quality test result
         representation, if non-zero one or more null-terminated
         strings of this total amount follow (after scalar data if
         any). */
-    uint32_t		qtestLength;
+    uint32_t qtestLength;
 
     /** Uncompressed size of the serialised monitor element ROOT object. */
-    uint32_t		objectLength;
+    uint32_t objectLength;
 
     /** DetId tag. */
-    uint32_t		tag;
+    uint32_t tag;
 
     /** Number of bins along X, Y and Z axes. */
-    uint32_t		nbins[3];
+    uint32_t nbins[3];
 
     /** Number of histogram entries. */
-    double		nentries;
+    double nentries;
 
     /** Mean along X, Y and Z axes. */
-    double		mean[3];
+    double mean[3];
 
     /** Standard deviation along X, Y and Z axes. */
-    double		rms[3];
+    double rms[3];
 
     /** Minimum and maximum bounds for X, Y and Z axes. */
-    double		bounds[3][2];
+    double bounds[3][2];
   };
 
   // ------------------------------------------------------------
   VisDQMIndex(const lat::Filename &path, VisDQMCache *cache = 0);
   ~VisDQMIndex(void);
 
-  void			initialise(void);
+  void initialise(void);
 
-  void			beginRead(VisDQMFile *&master);
-  void			finishRead(void);
+  void beginRead(VisDQMFile *&master);
+  void finishRead(void);
 
-  void			beginUpdate(VisDQMFile *&master, VisDQMFile *&newmaster);
-  void			cancelUpdate(void);
-  void			commitUpdate(void);
+  void beginUpdate(VisDQMFile *&master, VisDQMFile *&newmaster);
+  void cancelUpdate(void);
+  void commitUpdate(void);
 
-  lat::IOOffset		size(uint16_t kind, uint16_t index, uint16_t version);
-  VisDQMFile *		open(uint16_t kind,
-			     uint16_t index,
-			     uint16_t version,
-			     VisDQMFile::OpenMode mode);
+  lat::IOOffset size(uint16_t kind, uint16_t index, uint16_t version);
+  VisDQMFile *open(uint16_t kind, uint16_t index, uint16_t version,
+                   VisDQMFile::OpenMode mode);
 
 private:
   /** Read-write lock. */
-  pthread_rwlock_t	lock_;
+  pthread_rwlock_t lock_;
 
   /** Index directory path. */
-  lat::Filename		path_;
+  lat::Filename path_;
 
   /** Read cache if any. */
-  VisDQMCache		*cache_;
+  VisDQMCache *cache_;
 
   /** Last modification time of the generation file, last we looked. */
-  lat::Time		mtime_;
+  lat::Time mtime_;
 
   /** Flag indicating whether we are updating or just reading. */
-  bool			update_;
+  bool update_;
 
   /** The current index generation, last we looked. */
-  uint32_t		generation_;
+  uint32_t generation_;
 
   /** The master catalogue file.  Always open. */
-  VisDQMFile		*master_;
+  VisDQMFile *master_;
 
   /** The new master catalogue file if we are updating, or null otherwise. */
-  VisDQMFile		*newmaster_;
+  VisDQMFile *newmaster_;
 };
 
 #endif // DQM_VISDQMINDEX_H

@@ -21,6 +21,8 @@ __pycache__/
 
 *.log
 *.txt
+!requirements-testing.txt
+!requirements.txt
 .cache
 *.c
 *.cc
@@ -29,3 +31,5 @@ __pycache__/
 *.x
 *.so
 .idea/
+settings.json
+*.egg-info

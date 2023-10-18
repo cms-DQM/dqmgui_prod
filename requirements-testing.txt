@@ -1,0 +1,4 @@
+requests
+nose
+selenium
+pyvirtualdisplay

@@ -1,6 +1,6 @@
 // Shut up warning about _POSIX_C_SOURCE mismatch, caused by a
 // harmless conflict between _GNU_SOURCE and python header files.
-//#define NDEBUG 1
+// #define NDEBUG 1
 #include <unistd.h>
 #if _POSIX_C_SOURCE != 200112L
 #undef _POSIX_C_SOURCE
@@ -8,7 +8,8 @@
 #endif
 #define VISDQM_NO_ROOT 1
 #define DEBUG(n, x)
-
+#define png_infopp_NULL (png_infopp) NULL
+#define int_p_NULL (int *)NULL
 #include "DQM/DQMNet.h"
 #include "DQM/NatSort.h"
 #include "DQM/Objects.h"
@@ -20,6 +21,7 @@
 
 #include "classlib/iobase/File.h"
 #include "classlib/iobase/Filename.h"
+#include "classlib/iobase/IOFlags.h"
 #include "classlib/iobase/IOStatus.h"
 #include "classlib/iobase/LocalSocket.h"
 #include "classlib/iobase/SubProcess.h"
@@ -37,8 +39,8 @@
 #include "boost/python.hpp"
 #include "boost/python/stl_iterator.hpp"
 #include "boost/shared_ptr.hpp"
-#undef HAVE_PROTOTYPES  // conflict between python and libjpeg
-#undef HAVE_STDLIB_H    // conflict between python and libjpeg
+#undef HAVE_PROTOTYPES // conflict between python and libjpeg
+#undef HAVE_STDLIB_H   // conflict between python and libjpeg
 #include "boost/algorithm/string.hpp"
 #include "boost/gil/extension/io/jpeg_io.hpp"
 #include "boost/gil/extension/io/png_io.hpp"
@@ -51,12 +53,12 @@
 #include "rtgu/image/filters.hpp"
 #include "rtgu/image/rescale.hpp"
 
-#include <dlfcn.h>
-#include <inttypes.h>
-#include <math.h>
 #include <cfloat>
+#include <dlfcn.h>
 #include <ext/hash_map>
 #include <fstream>
+#include <inttypes.h>
+#include <math.h>
 #include <set>
 #include <stdexcept>
 
@@ -73,7 +75,8 @@ struct membuf {
 
 int fmemread(void *cookie, char *into, int len) {
   membuf *mbuf = (membuf *)cookie;
-  if (mbuf->pos > mbuf->size) return 0;
+  if (mbuf->pos > mbuf->size)
+    return 0;
   size_t nmax = std::min<size_t>(len, mbuf->size - mbuf->pos);
   memcpy(into, mbuf->data + mbuf->pos, nmax);
   mbuf->pos += nmax;
@@ -136,7 +139,7 @@ FILE *fmemopen(char *buf, size_t n, const char *) {
 
 FILE *open_memstream(char **buf, size_t *len, const char * = 0) {
   membuf *mbuf = (membuf *)malloc(sizeof(membuf));
-  mbuf->data = (char *)malloc(1024 * 100);  // 100K default
+  mbuf->data = (char *)malloc(1024 * 100); // 100K default
   mbuf->addr = buf;
   *mbuf->addr = mbuf->data;
   mbuf->size = 1024 * 100;
@@ -156,7 +159,8 @@ namespace gil {
 struct sinc_filter {
   static float width(void) { return 2.0f; }
   static float filter(float x) {
-    if (x == 0.0) return 1.0;
+    if (x == 0.0)
+      return 1.0;
     return sinf(M_PI * x) / (M_PI * x);
   }
 };
@@ -165,21 +169,22 @@ struct sinc_filter {
 struct lanczos_filter {
   static float width(void) { return 3.0f; }
   static float filter(float x) {
-    if (x < 0.0f) x = -x;
-    if (x < 3.0f) return sinc_filter::filter(x) * sinc_filter::filter(x / 3.0);
+    if (x < 0.0f)
+      x = -x;
+    if (x < 3.0f)
+      return sinc_filter::filter(x) * sinc_filter::filter(x / 3.0);
     return 0.0f;
   }
 };
 
-template <typename DstPixel, typename SrcPixel>
-class blendop {
+template <typename DstPixel, typename SrcPixel> class blendop {
   typedef typename channel_type<DstPixel>::type DstChannel;
   typedef typename channel_type<SrcPixel>::type SrcChannel;
   typedef channel_traits<DstChannel> DstInfo;
   typedef channel_traits<SrcChannel> SrcInfo;
   float f_;
 
- public:
+public:
   blendop(float f) : f_(f) {}
   DstChannel operator()(SrcChannel a, SrcChannel b) const {
     return channel_convert<DstChannel>(
@@ -230,8 +235,8 @@ inline void sharpen(rgb8_view_t &src, rgb8_view_t &dst, float amount) {
   blend(const_view(smoothed), color_converted_view<rgb32f_pixel_t>(src), amount,
         dst);
 }
-}  // namespace gil
-}  // namespace boost
+} // namespace gil
+} // namespace boost
 
 using namespace lat;
 using namespace boost;
@@ -250,18 +255,16 @@ static Regexp RX_OUTER_WHITE("^\\s+|\\s+$");
 static Regexp RX_CMSSW_VERSION("CMSSW(?:_[0-9])+(?:_pre[0-9]+)?");
 
 namespace __gnu_cxx {
-template <>
-struct hash<StringAtom> {
+template <> struct hash<StringAtom> {
   size_t operator()(const StringAtom &s) const { return s.index(); }
 };
 
-template <>
-struct hash<std::string> {
+template <> struct hash<std::string> {
   size_t operator()(const std::string &s) const {
     return __stl_hash_string(s.c_str());
   }
 };
-}  // namespace __gnu_cxx
+} // namespace __gnu_cxx
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -269,7 +272,7 @@ struct hash<std::string> {
 class PyReleaseInterpreterLock {
   PyThreadState *save_;
 
- public:
+public:
   PyReleaseInterpreterLock(void) { save_ = PyEval_SaveThread(); }
   ~PyReleaseInterpreterLock(void) { PyEval_RestoreThread(save_); }
 };
@@ -277,7 +280,7 @@ class PyReleaseInterpreterLock {
 class Lock {
   pthread_mutex_t *lock_;
 
- public:
+public:
   Lock(pthread_mutex_t *lock) { pthread_mutex_lock(lock_ = lock); }
   ~Lock(void) { pthread_mutex_unlock(lock_); }
 };
@@ -285,7 +288,7 @@ class Lock {
 class RDLock {
   pthread_rwlock_t *lock_;
 
- public:
+public:
   RDLock(pthread_rwlock_t *lock) { pthread_rwlock_rdlock(lock_ = lock); }
   ~RDLock(void) { pthread_rwlock_unlock(lock_); }
 };
@@ -293,7 +296,7 @@ class RDLock {
 class WRLock {
   pthread_rwlock_t *lock_;
 
- public:
+public:
   WRLock(pthread_rwlock_t *lock) { pthread_rwlock_wrlock(lock_ = lock); }
   ~WRLock(void) { pthread_rwlock_unlock(lock_); }
 };
@@ -315,11 +318,11 @@ struct VisDQMSample;
 struct VisDQMRegexp;
 class VisDQMSource;
 
-typedef std::vector<shared_ptr<VisDQMLayoutItem> > VisDQMLayoutItems;
-typedef std::vector<shared_ptr<VisDQMLayoutRow> > VisDQMLayoutRows;
-typedef std::vector<shared_ptr<VisDQMShownItem> > VisDQMShownItems;
-typedef std::vector<shared_ptr<VisDQMShownRow> > VisDQMShownRows;
-typedef ext::hash_map<StringAtom, shared_ptr<VisDQMItem> > VisDQMItems;
+typedef std::vector<shared_ptr<VisDQMLayoutItem>> VisDQMLayoutItems;
+typedef std::vector<shared_ptr<VisDQMLayoutRow>> VisDQMLayoutRows;
+typedef std::vector<shared_ptr<VisDQMShownItem>> VisDQMShownItems;
+typedef std::vector<shared_ptr<VisDQMShownRow>> VisDQMShownRows;
+typedef ext::hash_map<StringAtom, shared_ptr<VisDQMItem>> VisDQMItems;
 typedef ext::hash_map<StringAtom, VisDQMStatus> VisDQMStatusMap;
 typedef std::map<StringAtom, VisDQMDrawOptions> VisDQMDrawOptionMap;
 typedef std::list<VisDQMEventNum> VisDQMEventNumList;
@@ -408,21 +411,11 @@ struct VisDQMSample {
   VisDQMSource *origin;
   uint64_t time;
   VisDQMSample(VisDQMSampleType t, long r, const std::string &d)
-      : type(t),
-        runnr(r),
-        importversion(0),
-        dataset(d),
-        version(""),
-        origin(0),
+      : type(t), runnr(r), importversion(0), dataset(d), version(""), origin(0),
         time(0) {}
   VisDQMSample(VisDQMSampleType t, long r)
-      : type(t),
-        runnr(r),
-        importversion(0),
-        dataset(""),
-        version(""),
-        origin(0),
-        time(0) {}
+      : type(t), runnr(r), importversion(0), dataset(""), version(""),
+        origin(0), time(0) {}
   VisDQMSample() { VisDQMSample(SAMPLE_ANY, 0); }
 };
 
@@ -460,7 +453,8 @@ static std::string thousands(const std::string &arg) {
 
   while (true) {
     result = StringOps::replace(tmp, RX_THOUSANDS, "\\1'\\2");
-    if (result == tmp) break;
+    if (result == tmp)
+      break;
 
     tmp = result;
   }
@@ -473,7 +467,8 @@ static void copyopts(const py::dict &opts,
   for (py::stl_input_iterator<std::string> i(opts), e; i != e; ++i) {
     std::string key(*i);
     py::extract<std::string> value(opts.get(key));
-    if (value.check()) options[key] = value();
+    if (value.check())
+      options[key] = value();
   }
 }
 
@@ -498,7 +493,8 @@ static void splitPath(std::string &dir, std::string &name,
 
 static std::string stringToJSON(const std::string &x,
                                 bool emptyIsNone = false) {
-  if (emptyIsNone && x.empty()) return "None";
+  if (emptyIsNone && x.empty())
+    return "None";
 
   char buf[8];
   std::string result;
@@ -539,7 +535,8 @@ static std::string stringsToJSON(const StringAtomSet &overlays,
   std::string result = "[";
 
   for (; mi != me; ++mi) {
-    if (result.length() > 1) result += ", ";
+    if (result.length() > 1)
+      result += ", ";
     result += stringToJSON(mi->string());
   }
   result += "]";
@@ -565,7 +562,8 @@ static shared_ptr<Regexp> rx(const std::string &match, int options = 0) {
 static void makerx(const std::string &rxstr, shared_ptr<Regexp> &rxobj,
                    std::string &rxerr, int options = 0) {
   try {
-    if (!rxstr.empty()) rxobj = rx(rxstr, options);
+    if (!rxstr.empty())
+      rxobj = rx(rxstr, options);
   } catch (Error &e) {
     rxerr = e.explainSelf();
   } catch (std::exception &e) {
@@ -583,7 +581,8 @@ static void fastrx(VisDQMRegexp &rxobj, const std::string &rxstr) {
 }
 
 static bool fastmatch(VisDQMRegexp *rx, const StringAtom &str) {
-  if (!rx || !rx->rx) return true;
+  if (!rx || !rx->rx)
+    return true;
 
   size_t nlock = str.index() / VisDQMRegexp::REGEXPS_PER_LOCK;
   pthread_rwlock_rdlock(&rx->locks[nlock]);
@@ -592,7 +591,8 @@ static bool fastmatch(VisDQMRegexp *rx, const StringAtom &str) {
   bool matched = rx->matched[str.index()];
   pthread_rwlock_unlock(&rx->locks[nlock]);
 
-  if (tried) return matched;
+  if (tried)
+    return matched;
 
   pthread_rwlock_wrlock(&rx->locks[nlock]);
   size_t maxtree = stree.size();
@@ -603,7 +603,8 @@ static bool fastmatch(VisDQMRegexp *rx, const StringAtom &str) {
       bool match = rx->rx->match(stree.key(i));
       rx->tried[i] = true;
       rx->matched[i] = match;
-      if (i == str.index()) matched = match;
+      if (i == str.index())
+        matched = match;
     }
 
   pthread_rwlock_unlock(&rx->locks[nlock]);
@@ -703,13 +704,11 @@ static std::string formatStartTime(long curStartTime) {
   bool sameyear = nowtm.tm_year == runtm.tm_year;
   bool samemonth = (sameyear && nowtm.tm_mon == runtm.tm_mon);
   bool sameday = (samemonth && nowtm.tm_mday == runtm.tm_mday);
-  const char *fmt =
-      (curStartTime <= 0
-           ? "(Not recorded)"
-           : sameday ? "Today %H:%M"
-                     : samemonth ? "%a %d, %H:%M"
-                                 : sameyear ? "%a %b %d, %H:%M"
-                                            : "%a %b %d '%y, %H:%M");
+  const char *fmt = (curStartTime <= 0 ? "(Not recorded)"
+                     : sameday         ? "Today %H:%M"
+                     : samemonth       ? "%a %d, %H:%M"
+                     : sameyear        ? "%a %b %d, %H:%M"
+                                       : "%a %b %d '%y, %H:%M");
   return runstart.format(false, fmt);
 }
 
@@ -731,7 +730,8 @@ static void getEventInfoNum(const std::string &name, const char *data,
   else if ((len = 28) && name.size() > len &&
            name.compare(name.size() - len, len,
                         "/EventInfo/runStartTimeStamp") == 0)
-    if ((real = atof(data)) > 3600) value = long(real + 0.5);
+    if ((real = atof(data)) > 3600)
+      value = long(real + 0.5);
 
   if (value >= 0) {
     bool found = false;
@@ -739,7 +739,8 @@ static void getEventInfoNum(const std::string &name, const char *data,
     VisDQMEventNumList::iterator li = eventnums.begin();
     VisDQMEventNumList::iterator le = eventnums.end();
     for (; li != le; ++li)
-      if ((found = (li->subsystem == subsys))) break;
+      if ((found = (li->subsystem == subsys)))
+        break;
 
     VisDQMEventNum *evnum;
     if (!found) {
@@ -770,7 +771,8 @@ static void setEventInfoNums(const VisDQMEventNumList &eventnums,
   VisDQMEventNumList::const_iterator li = eventnums.begin();
   VisDQMEventNumList::const_iterator le = eventnums.end();
   for (; li != le; ++li) {
-    if (li->runnr > current.runnr) current = *li;
+    if (li->runnr > current.runnr)
+      current = *li;
 
     if (li->runnr == current.runnr && li->luminr > current.luminr)
       current.luminr = li->luminr;
@@ -849,9 +851,8 @@ static std::string axisStatsToJSON(uint32_t nbins[3], double mean[3],
                                    double rms[3], double bounds[3][2],
                                    int axis) {
   if (std::isfinite(mean[axis]) && std::isfinite(rms[axis]))
-    return StringFormat(
-               "{ \"nbins\": %1, \"mean\": %2, \"rms\": %3,"
-               " \"min\": %4, \"max\": %5 }")
+    return StringFormat("{ \"nbins\": %1, \"mean\": %2, \"rms\": %3,"
+                        " \"min\": %4, \"max\": %5 }")
         .arg(nbins[axis])
         .arg(mean[axis])
         .arg(rms[axis])
@@ -874,9 +875,8 @@ static std::string axisStatsToJSON(uint32_t nbins[3], double mean[3],
         .arg(bounds[axis][0])
         .arg(bounds[axis][1]);
   }
-  return StringFormat(
-             "{ \"nbins\": %1, \"mean\": %2, \"rms\": \"Nan or Inf\","
-             " \"min\": %3, \"max\": %4 }")
+  return StringFormat("{ \"nbins\": %1, \"mean\": %2, \"rms\": \"Nan or Inf\","
+                      " \"min\": %3, \"max\": %4 }")
       .arg(nbins[axis])
       .arg(mean[axis])
       .arg(bounds[axis][0])
@@ -891,7 +891,8 @@ static void objectToJSON(const std::string &name, const std::string &path,
                          uint32_t nbins[3], double mean[3], double rms[3],
                          double bounds[3][2], DQMNet::QReports &qreports,
                          std::string &qstr, std::string &result) {
-  if (!result.empty()) result += ", ";
+  if (!result.empty())
+    result += ", ";
 
   DQMNet::QReports::const_iterator qi, qe;
   uint32_t type = flags & DQMNet::DQM_PROP_TYPE_MASK;
@@ -906,10 +907,9 @@ static void objectToJSON(const std::string &name, const std::string &path,
   for (qi = qreports.begin(), qe = qreports.end(); qi != qe; ++qi) {
     char buf[64];
     sprintf(buf, "%.*g", DBL_DIG + 2, qi->qtresult);
-    qstr += StringFormat(
-                "%1 {\"status\": %2,\"result\": %3,"
-                " \"name\": %4, \"algorithm\": %5,"
-                " \"message\": %6}")
+    qstr += StringFormat("%1 {\"status\": %2,\"result\": %3,"
+                         " \"name\": %4, \"algorithm\": %5,"
+                         " \"message\": %6}")
                 .arg(qsep)
                 .arg(qi->code)
                 .arg(buf)
@@ -931,28 +931,27 @@ static void objectToJSON(const std::string &name, const std::string &path,
           " \"%19\": \"%20\"}\n")
           .arg(stringToJSON(name))
           .arg(stringToJSON(path))
-          .arg(type == DQMNet::DQM_PROP_TYPE_INVALID
-                   ? "INVALID"
-                   : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR" : "ROOT")
-          .arg(
-              type == DQMNet::DQM_PROP_TYPE_INT ? "INT"
-                  : type == DQMNet::DQM_PROP_TYPE_REAL ? "REAL"
-                        : type == DQMNet::DQM_PROP_TYPE_STRING ? "STRING"
-                              : type == DQMNet::DQM_PROP_TYPE_TH1F ? "TH1F"
-                                    : type == DQMNet::DQM_PROP_TYPE_TH1S ? "TH1S"
-                                          : type == DQMNet::DQM_PROP_TYPE_TH1D ? "TH1D"
-                                              : type == DQMNet::DQM_PROP_TYPE_TH1I ? "TH1I"
-                                                   : type == DQMNet::DQM_PROP_TYPE_TH2F ? "TH2F"
-                                                      : type == DQMNet::DQM_PROP_TYPE_TH2S ? "TH2S"
-                                                              : type == DQMNet::DQM_PROP_TYPE_TH2I ? "TH2I"
-                                                                    : type == DQMNet::DQM_PROP_TYPE_TH2D ? "TH2D"
-                                                                        : type == DQMNet::DQM_PROP_TYPE_TH3F ? "TH3F"
-                                                                              : type == DQMNet::DQM_PROP_TYPE_TH3S ? "TH3S"
-                                                                                    : type == DQMNet::DQM_PROP_TYPE_TH3D ? "TH3D"
-                                                                                          : type == DQMNet::DQM_PROP_TYPE_TPROF ? "TPROF"
-                                                                                                : type == DQMNet::DQM_PROP_TYPE_TPROF2D ? "TPROF2D"
-                                                                                                      : type == DQMNet::DQM_PROP_TYPE_DATABLOB ? "DATABLOB"
-                                                                                                            : "OTHER")
+          .arg(type == DQMNet::DQM_PROP_TYPE_INVALID  ? "INVALID"
+               : type <= DQMNet::DQM_PROP_TYPE_SCALAR ? "SCALAR"
+                                                      : "ROOT")
+          .arg(type == DQMNet::DQM_PROP_TYPE_INT        ? "INT"
+               : type == DQMNet::DQM_PROP_TYPE_REAL     ? "REAL"
+               : type == DQMNet::DQM_PROP_TYPE_STRING   ? "STRING"
+               : type == DQMNet::DQM_PROP_TYPE_TH1F     ? "TH1F"
+               : type == DQMNet::DQM_PROP_TYPE_TH1S     ? "TH1S"
+               : type == DQMNet::DQM_PROP_TYPE_TH1D     ? "TH1D"
+               : type == DQMNet::DQM_PROP_TYPE_TH1I     ? "TH1I"
+               : type == DQMNet::DQM_PROP_TYPE_TH2F     ? "TH2F"
+               : type == DQMNet::DQM_PROP_TYPE_TH2S     ? "TH2S"
+               : type == DQMNet::DQM_PROP_TYPE_TH2I     ? "TH2I"
+               : type == DQMNet::DQM_PROP_TYPE_TH2D     ? "TH2D"
+               : type == DQMNet::DQM_PROP_TYPE_TH3F     ? "TH3F"
+               : type == DQMNet::DQM_PROP_TYPE_TH3S     ? "TH3S"
+               : type == DQMNet::DQM_PROP_TYPE_TH3D     ? "TH3D"
+               : type == DQMNet::DQM_PROP_TYPE_TPROF    ? "TPROF"
+               : type == DQMNet::DQM_PROP_TYPE_TPROF2D  ? "TPROF2D"
+               : type == DQMNet::DQM_PROP_TYPE_DATABLOB ? "DATABLOB"
+                                                        : "OTHER")
           .arg((unsigned long)lumisect)
           .arg((report & DQMNet::DQM_PROP_REPORT_ALARM) ? 1 : 0)
           .arg((report & DQMNet::DQM_PROP_REPORT_ERROR) ? 1 : 0)
@@ -1008,7 +1007,8 @@ static std::string samplesToJSON(VisDQMSamples &samples) {
   for (i = samples.begin(), e = samples.end(); i != e; ++i) {
     if (result.empty() || i->type != last) {
       last = i->type;
-      if (!result.empty()) result += "]}, ";
+      if (!result.empty())
+        result += "]}, ";
       result += "{\"type\":\"";
       result += sampleTypeLabel[i->type];
       result += "\", \"items\":[";
@@ -1020,7 +1020,8 @@ static std::string samplesToJSON(VisDQMSamples &samples) {
     comma = ", ";
   }
 
-  if (!result.empty()) result += "]}";
+  if (!result.empty())
+    result += "]}";
 
   return result;
 }
@@ -1051,7 +1052,7 @@ static VisDQMSample sessionSample(const py::dict &session) {
 //////////////////////////////////////////////////////////////////////
 /** Base class for providing DQM objects. */
 class VisDQMSource {
- protected:
+protected:
   void clearobj(DQMNet::Object &obj) {
     obj.flags = DQMNet::DQM_PROP_TYPE_INVALID;
     obj.tag = 0;
@@ -1069,7 +1070,7 @@ class VisDQMSource {
     memset(&attrs, 0, sizeof(attrs));
   }
 
- public:
+public:
   VisDQMSource(void) {}
 
   virtual ~VisDQMSource(void) {}
@@ -1135,9 +1136,8 @@ static Regexp RX_OPT_REFTYPE(
     "^(|object|reference|overlay|ratiooverlay|stacked|samesample)$");
 static Regexp RX_OPT_NORMTYPE("^(|True|False)$");
 static Regexp RX_OPT_AXISTYPE("^(def|lin|log)$");
-static Regexp RX_OPT_TREND_TYPE(
-    "^(num-(entries|bins|bytes)|value|"
-    "[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
+static Regexp RX_OPT_TREND_TYPE("^(num-(entries|bins|bytes)|value|"
+                                "[xyz]-(min|max|bins|mean(-rms|-min-max)?))$");
 static IMGOPT STDIMGOPTS[] = {{"w", RX_OPT_INT},
                               {"h", RX_OPT_INT},
                               {"drawopts", RX_OPT_DRAWOPT},
@@ -1234,8 +1234,7 @@ class VisDQMRenderLink {
   bool debug_;
   bool quiet_;
   std::string plugin_;
-  Pipe logpipe_;
-  SubProcess logger_;
+  File logout_;
   std::vector<Server> servers_;
   Image cache_[IMAGE_CACHE_SIZE];
   pthread_mutex_t lock_;
@@ -1244,7 +1243,7 @@ class VisDQMRenderLink {
   pthread_t thread_;
   static VisDQMRenderLink *s_instance;
 
- public:
+public:
   static VisDQMRenderLink *instance(void) { return s_instance; }
 
   VisDQMRenderLink(const std::string &basedir, const std::string &logdir,
@@ -1257,14 +1256,13 @@ class VisDQMRenderLink {
     quiet_ = false;
 
     // Initialise cache to 5000 unused images.
-    for (int i = 0; i < IMAGE_CACHE_SIZE; ++i) lrunuke(cache_[i]);
+    for (int i = 0; i < IMAGE_CACHE_SIZE; ++i)
+      lrunuke(cache_[i]);
 
     // Initialise requested number of sub-processes, all feeding to one logger.
-    std::string logout(logdir + "/renderlog-%Y%m%d.log");
-    logger_.run(
-        Argz("rotatelogs", logout.c_str(), "86400").argz(),
-        SubProcess::Write | SubProcess::NoCloseError | SubProcess::Search,
-        &logpipe_);
+    logout_.open(logdir + "/renderlog.log", IOFlags::OpenWrite |
+                                                IOFlags::OpenAppend |
+                                                IOFlags::OpenCreate);
 
     servers_.resize(nproc);
     for (int i = 0; i < nproc; ++i) {
@@ -1319,19 +1317,20 @@ class VisDQMRenderLink {
           return false;
         }
 
-        if (opt == 0)  // w
+        if (opt == 0) // w
         {
           destwidth = atoi(pos->second.c_str());
           continue;
         }
 
-        if (opt == 1)  // h
+        if (opt == 1) // h
         {
           destheight = atoi(pos->second.c_str());
           continue;
         }
 
-        if (!reqspec.empty()) reqspec += ';';
+        if (!reqspec.empty())
+          reqspec += ';';
         reqspec += pos->first;
         reqspec += '=';
         reqspec += pos->second;
@@ -1368,7 +1367,8 @@ class VisDQMRenderLink {
 
     // If absurd image sizes were re-computed due to some weirdly
     // formatted request (extremely large ratio), return nothing.
-    if (width >= 2500 || height >= 2500) return false;
+    if (width >= 2500 || height >= 2500)
+      return false;
 
     sprintf(buf, "%sw=%d;h=%d", reqspec.empty() ? "" : ";", width, height);
     reqspec += buf;
@@ -1408,10 +1408,10 @@ class VisDQMRenderLink {
     return !quiet_ && makeJson(jsonData, type, protoimg, reqspec, jsroot);
   }
 
- private:
+private:
   static std::ostream &logme(void) {
     Time now = Time::current();
-    return std::cerr << now.format(true, "%Y-%m-%d %H:%M:%S.")
+    return std::cout << now.format(true, "%Y-%m-%d %H:%M:%S.")
                      << now.nanoformat(3, 3) << " visDQMRenderLink[" << getpid()
                      << '/' << pthread_self() << "]: ";
   }
@@ -1427,10 +1427,10 @@ class VisDQMRenderLink {
                                 (debug_ ? "--debug" : 0),
                                 0};
     srv.proc.reset(new SubProcess(serverArgz,
-                                  SubProcess::First | SubProcess::Search |
+                                  SubProcess::One | SubProcess::Search |
                                       SubProcess::NoCloseOutput |
                                       SubProcess::NoCloseError,
-                                  null, logpipe_.sink(), logpipe_.sink()));
+                                  null, &logout_, &logout_));
     srv.checkme = true;
   }
 
@@ -1453,12 +1453,12 @@ class VisDQMRenderLink {
 
     size_t datalen = 0;
     for (size_t i = 0; i < numobj; ++i) {
-      assert(obj[i].flags == 0  // totally missing
+      assert(obj[i].flags == 0 // totally missing
              || isScalarType(obj[i].flags) || isROOTType(obj[i].flags) ||
              isBLOBType(obj[i].flags));
       assert(i == 0 || !isScalarType(obj[i].flags));
-      assert(i == 0 || (isBLOBType(obj[0].flags) && numobj <= 2)  // stripchart
-             || getType(obj[i].flags) == getType(obj[0].flags));  // other
+      assert(i == 0 || (isBLOBType(obj[0].flags) && numobj <= 2) // stripchart
+             || getType(obj[i].flags) == getType(obj[0].flags)); // other
 
       if (isROOTType(obj[i].flags) || isBLOBType(obj[i].flags))
         datalen +=
@@ -1538,7 +1538,8 @@ class VisDQMRenderLink {
   void blacklistimg(Server &srv) {
     typedef std::map<std::string, Time> BlackList;
 
-    if (srv.lastimg.empty()) return;
+    if (srv.lastimg.empty())
+      return;
 
     BlackList bad;
     Filename blacklist(dir_, "blacklist.txt");
@@ -1547,7 +1548,8 @@ class VisDQMRenderLink {
       std::ifstream f(blacklist);
       do {
         getline(f, line);
-        if (line.empty()) continue;
+        if (line.empty())
+          continue;
 
         StringList s = StringOps::split(line, ' ', 0, 2, 0, -1);
         bad[s[1]] = Time::ValueType(atof(s[0].c_str()) * 1e9);
@@ -1594,7 +1596,8 @@ class VisDQMRenderLink {
 
       if (!p) {
         startsrv(srv);
-        if (maybe == servers_.size()) maybe = i;
+        if (maybe == servers_.size())
+          maybe = i;
       } else if (proc == servers_.size() || srv.socket.fd() == IOFD_INVALID ||
                  (srv.pending.size() < servers_[proc].pending.size()))
         proc = i;
@@ -1607,7 +1610,8 @@ class VisDQMRenderLink {
       // Wait up to one second to connect to the server.
       int ntry;
       for (ntry = 10; ntry >= 0; TimeInfo::msleep(100), --ntry)
-        if (srv.sockpath.exists()) break;
+        if (srv.sockpath.exists())
+          break;
 
       try {
         if (ntry >= 0) {
@@ -1705,7 +1709,8 @@ class VisDQMRenderLink {
       if (!imgbytes.empty()) {
         srv.checkme = false;
         srv.lastimg.clear();
-        if (msg_type == DQM_MSG_GET_IMAGE_DATA) compress(img, imgbytes);
+        if (msg_type == DQM_MSG_GET_IMAGE_DATA)
+          compress(img, imgbytes);
       }
       srv.pending.pop_front();
     }
@@ -1729,7 +1734,7 @@ class VisDQMRenderLink {
         rgb8_view_t destview =
             interleaved_view(destimg.width, destimg.height,
                              (rgb8_pixel_t *)&newdata[0], destimg.width * 3);
-        rescale(srcview, destview, catmull_rom_filter());  // lanczos_filter()
+        rescale(srcview, destview, catmull_rom_filter()); // lanczos_filter()
         sharpen(destview, destview, 1.4);
       }
     } catch (std::exception &e) {
@@ -1777,9 +1782,8 @@ class VisDQMRenderLink {
       std::string().swap(pngbytes);
     }
 
-    if (png) fclose(png);
-
-    if (pngdata) free(pngdata);
+    if (pngdata)
+      free(pngdata);
 
     pthread_mutex_lock(&lock_);
     img.pngbytes = pngbytes;
@@ -1833,7 +1837,8 @@ class VisDQMRenderLink {
           pthread_cond_broadcast(&imgavail_);
         }
 
-        while (srcimg.busy) pthread_cond_wait(&imgavail_, &lock_);
+        while (srcimg.busy)
+          pthread_cond_wait(&imgavail_, &lock_);
 
         assert(srcimg.width == protoreq.width);
         assert(srcimg.height == protoreq.height);
@@ -1843,9 +1848,11 @@ class VisDQMRenderLink {
         assert(srcimg.inuse > 0);
         srcimg.inuse--;
         assert(img.inuse > 0);
-        if (!srcbytes.empty()) resizeimg(srcbytes, img, protoreq);
+        if (!srcbytes.empty())
+          resizeimg(srcbytes, img, protoreq);
 
-        if (!srcbytes.empty()) compress(img, srcbytes);
+        if (!srcbytes.empty())
+          compress(img, srcbytes);
       }
 
       assert(img.inuse > 0);
@@ -1854,7 +1861,8 @@ class VisDQMRenderLink {
       pthread_cond_broadcast(&imgavail_);
     }
 
-    while (img.busy) pthread_cond_wait(&imgavail_, &lock_);
+    while (img.busy)
+      pthread_cond_wait(&imgavail_, &lock_);
 
     assert(img.inuse > 0);
     img.inuse--;
@@ -1887,7 +1895,8 @@ class VisDQMRenderLink {
     img.busy = false;
     pthread_cond_broadcast(&imgavail_);
 
-    while (img.busy) pthread_cond_wait(&imgavail_, &lock_);
+    while (img.busy)
+      pthread_cond_wait(&imgavail_, &lock_);
 
     assert(img.inuse > 0);
     img.inuse--;
@@ -1919,7 +1928,8 @@ class VisDQMRenderLink {
       imgbytes.clear();
     }
 
-    if (png) fclose(png);
+    if (png)
+      fclose(png);
   }
 };
 
@@ -1929,7 +1939,7 @@ class VisDQMRenderLink {
 class VisDQMUnknownSource : public VisDQMSource {
   VisDQMRenderLink *link_;
 
- public:
+public:
   VisDQMUnknownSource(void) : link_(VisDQMRenderLink::instance()) {}
 
   py::tuple plot(const std::string &path, py::dict opts) {
@@ -1949,10 +1959,15 @@ class VisDQMUnknownSource : public VisDQMSource {
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -1961,7 +1976,7 @@ class VisDQMUnknownSource : public VisDQMSource {
 //////////////////////////////////////////////////////////////////////
 /** Dump catalogue and objects out in JSON. */
 class VisDQMToJSON {
- public:
+public:
   VisDQMToJSON(void) {}
 
   py::tuple samples(py::list pysources, py::dict opts) {
@@ -1978,7 +1993,8 @@ class VisDQMToJSON {
     // Get all the sources which have a C++ part we can query.
     for (py::stl_input_iterator<py::object> i(pysources), e; i != e; ++i) {
       py::extract<VisDQMSource *> src(*i);
-      if (src.check()) sources.push_back(src());
+      if (src.check())
+        sources.push_back(src());
     }
 
     {
@@ -2083,7 +2099,8 @@ class VisDQMToJSON {
       splitPath(dir, name, ci->second->name.string());
 
       // Apply regex for the ME name to filter out directories
-      if (rxname && rxname->search(name)) continue;
+      if (rxname && rxname->search(name))
+        continue;
 
       if (rootpath == dir)
         /* Keep object directly in rootpath directory */;
@@ -2111,7 +2128,8 @@ class VisDQMToJSON {
             splitPath(dir, name, path);
 
             // Apply regex for the ME name
-            if (rxname && rxname->search(name)) continue;
+            if (rxname && rxname->search(name))
+              continue;
 
             // The check on the name (i.e. ME name) and directory
             // is mandatory here since we want to avoid the case
@@ -2143,7 +2161,7 @@ class VisDQMToJSON {
 class VisDQMOverlaySource : public VisDQMSource {
   VisDQMRenderLink *link_;
 
- public:
+public:
   VisDQMOverlaySource(void) : link_(VisDQMRenderLink::instance()) {}
 
   virtual const char *plotter(void) const { return "overlay"; }
@@ -2174,7 +2192,8 @@ class VisDQMOverlaySource : public VisDQMSource {
     for (py::stl_input_iterator<py::tuple> i(overlay), e; i != e; ++i) {
       py::tuple item = *i;
       py::extract<VisDQMSource *> src(item[0]);
-      if (!src.check()) continue;
+      if (!src.check())
+        continue;
 
       VisDQMSource *xsrc = src();
       VisDQMSample sample(SAMPLE_ANY, py::extract<long>(item[1]),
@@ -2192,13 +2211,16 @@ class VisDQMOverlaySource : public VisDQMSource {
       // fundamental type. Skip invalid or unknown objects.
       if (!objects.empty() && getType(obj.flags) != getType(objects[0].flags))
         continue;
-      if (!objects.empty() && isScalarType(obj.flags)) continue;
-      if (!isROOTType(obj.flags) && !isScalarType(obj.flags)) continue;
+      if (!objects.empty() && isScalarType(obj.flags))
+        continue;
+      if (!isROOTType(obj.flags) && !isScalarType(obj.flags))
+        continue;
 
       streamers.push_back(streamer);
       objects.push_back(obj);
       options["reflabel" + std::to_string(objects.size() - 1)] = label;
-      if (path.empty()) path = opath;
+      if (path.empty())
+        path = opath;
     }
 
     // If we ended up with something, issue a bulk draw.
@@ -2217,10 +2239,15 @@ class VisDQMOverlaySource : public VisDQMSource {
     }
 
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2231,7 +2258,7 @@ class VisDQMOverlaySource : public VisDQMSource {
 class VisDQMStripChartSource : public VisDQMSource {
   VisDQMRenderLink *link_;
 
- public:
+public:
   VisDQMStripChartSource(void) : link_(VisDQMRenderLink::instance()) {}
 
   virtual const char *plotter(void) const { return "stripchart"; }
@@ -2268,7 +2295,8 @@ class VisDQMStripChartSource : public VisDQMSource {
     // Get all the sources which have a C++ part we can query.
     for (py::stl_input_iterator<py::object> i(pysources), e; i != e; ++i) {
       py::extract<VisDQMSource *> src(*i);
-      if (src.check()) sources.push_back(src());
+      if (src.check())
+        sources.push_back(src());
     }
 
     // Now let python go and start doing real work.
@@ -2305,7 +2333,8 @@ class VisDQMStripChartSource : public VisDQMSource {
           include = (StringOps::remove(s.dataset, RX_CMSSW_VERSION) ==
                      cursample.dataset);
 
-        if (include) final.push_back(s);
+        if (include)
+          final.push_back(s);
       }
 
       // Sort the samples by type and run (or CMSSW version).  This
@@ -2351,7 +2380,8 @@ class VisDQMStripChartSource : public VisDQMSource {
       clearobj(xobj[1]);
       for (size_t i = 0, e = final.size(); i != e; ++i) {
         // If we have enough samples, give up.
-        if (attrs.size() == keep) break;
+        if (attrs.size() == keep)
+          break;
 
         // Get the attribute here.
         final[i].origin->getattr(final[i], path, oneattr, streamers[1],
@@ -2421,10 +2451,15 @@ class VisDQMStripChartSource : public VisDQMSource {
     }
 
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2435,7 +2470,7 @@ class VisDQMStripChartSource : public VisDQMSource {
 class VisDQMCertificationSource : public VisDQMSource {
   VisDQMRenderLink *link_;
 
- public:
+public:
   VisDQMCertificationSource(void) : link_(VisDQMRenderLink::instance()) {}
 
   virtual const char *plotter(void) const { return "certification"; }
@@ -2498,10 +2533,15 @@ class VisDQMCertificationSource : public VisDQMSource {
       }
     }
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2512,7 +2552,7 @@ class VisDQMLayoutSource : public VisDQMSource {
   pthread_mutex_t lock_;
   VisDQMItems items_;
 
- public:
+public:
   VisDQMLayoutSource() { pthread_mutex_init(&lock_, 0); }
 
   ~VisDQMLayoutSource(void) {}
@@ -2541,7 +2581,8 @@ class VisDQMLayoutSource : public VisDQMSource {
           continue;
       }
 
-      if (rxsearch && rxsearch->search(o.name.string()) < 0) continue;
+      if (rxsearch && rxsearch->search(o.name.string()) < 0)
+        continue;
 
       if (alarm && ((o.flags & VisDQMIndex::SUMMARY_PROP_REPORT_ALARM) != 0) !=
                        (*alarm == true))
@@ -2632,7 +2673,7 @@ class VisDQMLiveThread : public DQMBasicNet {
   pthread_cond_t reqrecv_;
   std::string streamers_;
 
- public:
+public:
   VisDQMLiveThread(VisDQMSource *owner, bool verbose, const std::string &host,
                    int port)
       : DQMBasicNet("VisDQMLiveThread"), owner_(owner) {
@@ -2657,11 +2698,13 @@ class VisDQMLiveThread : public DQMBasicNet {
 
     // If it was end of full list update, refresh local version.
     // This helps us keep items locked the minimum possible time.
-    if (!ret || len != 4 * sizeof(uint32_t)) return ret;
+    if (!ret || len != 4 * sizeof(uint32_t))
+      return ret;
 
     uint32_t words[4];
     memcpy(words, data, sizeof(words));
-    if (words[1] != DQM_REPLY_LIST_END || !words[3]) return ret;
+    if (words[1] != DQM_REPLY_LIST_END || !words[3])
+      return ret;
 
     // Get a write lock on the items.
     WRLock gate(&itemlock_);
@@ -2681,7 +2724,8 @@ class VisDQMLiveThread : public DQMBasicNet {
         Object &o = const_cast<Object &>(*oi);
         path.clear();
         path += *o.dirname;
-        if (!path.empty()) path += '/';
+        if (!path.empty())
+          path += '/';
         path += o.objname;
 
         StringAtom name(&stree, path);
@@ -2716,7 +2760,7 @@ class VisDQMLiveThread : public DQMBasicNet {
   }
 
   void fetch(const std::string &name, std::string &streamers, Object &retobj) {
-    streamers = streamers_;  // FIXME: from peer;
+    streamers = streamers_; // FIXME: from peer;
 
     // If the object is already there and is not stale, return immediately.
     lock();
@@ -2763,7 +2807,8 @@ class VisDQMLiveThread : public DQMBasicNet {
     onMessage(&reply, &phantom, &req[0], req.size());
     if (!reply.data.empty()) {
       Bucket **prev = &phantom.sendq;
-      while (*prev) prev = &(*prev)->next;
+      while (*prev)
+        prev = &(*prev)->next;
 
       *prev = new Bucket;
       (*prev)->next = 0;
@@ -2782,7 +2827,8 @@ class VisDQMLiveThread : public DQMBasicNet {
     // Got the object.  We don't need the reply packet since
     // we also know the object by now (if it exists).
     discard(phantom.sendq);
-    if (Object *o = findObject(0, name)) retobj = *o;
+    if (Object *o = findObject(0, name))
+      retobj = *o;
     unlock();
   }
 
@@ -2841,7 +2887,8 @@ class VisDQMLiveThread : public DQMBasicNet {
         Object &o = const_cast<Object &>(*oi);
 
         // Apply regex for the ME name
-        if (rxname && rxname->search(o.objname)) continue;
+        if (rxname && rxname->search(o.objname))
+          continue;
 
         if (rootpath == *o.dirname) {
           // Copy 'o' to result. We need to copy the directory name
@@ -2850,7 +2897,8 @@ class VisDQMLiveThread : public DQMBasicNet {
           const std::string *dir = &*dirs.insert(*o.dirname).first;
           // If we filter by ME name, get rid of this ME in case we
           // have no match
-          if (!mename.empty() && mename != o.objname) continue;
+          if (!mename.empty() && mename != o.objname)
+            continue;
           objs.push_back(o);
           objs.back().dirname = dir;
         } else if (isSubdirectory(rootpath, *o.dirname)) {
@@ -2890,26 +2938,27 @@ class VisDQMLiveThread : public DQMBasicNet {
       path.clear();
       path.reserve(ni->dirname->size() + ni->objname.size() + 1);
       path += *ni->dirname;
-      if (!path.empty()) path += '/';
+      if (!path.empty())
+        path += '/';
       path += ni->objname;
       if (fulldata) {
         fetch(path, junk, o);
       }
       stamp = std::max(stamp, ni->version * 1e-9);
-      objectToJSON(ni->objname, path, ni->scalar.c_str(),
-                   ni->qdata.c_str(), o.rawdata, 0, ni->flags, ni->tag, 0,
-                   nullbins, nullstat, nullstat, nulllim, qreports, qstr,
-                   result);
+      objectToJSON(ni->objname, path, ni->scalar.c_str(), ni->qdata.c_str(),
+                   o.rawdata, 0, ni->flags, ni->tag, 0, nullbins, nullstat,
+                   nullstat, nulllim, qreports, qstr, result);
     }
   }
 
- protected:
+protected:
   // Release an object from wait: wake up fetch() side of this class.
   // Here we need to issue wake up only if the object is null; valid
   // objects are handled in sendObjectToPeer().
   virtual void releaseFromWait(Bucket *msg, WaitObject &w, Object *o) {
     DQMBasicNet::releaseFromWait(msg, w, o);
-    if (!o) pthread_cond_broadcast(&reqrecv_);
+    if (!o)
+      pthread_cond_broadcast(&reqrecv_);
   }
 
   // Handle notification to send an object to downstream client. The
@@ -2933,7 +2982,7 @@ class VisDQMLiveSource : public VisDQMSource {
   VisDQMLiveThread *thread_;
   VisDQMRenderLink *link_;
 
- public:
+public:
   VisDQMLiveSource(py::object /* gui */, py::dict opts)
       : mydataset_(py::extract<std::string>(opts["dataset"])),
         thread_(new VisDQMLiveThread(this, py::extract<bool>(opts["verbose"]),
@@ -2942,7 +2991,8 @@ class VisDQMLiveSource : public VisDQMSource {
         link_(VisDQMRenderLink::instance()) {}
 
   ~VisDQMLiveSource(void) {
-    if (thread_) exit();
+    if (thread_)
+      exit();
   }
 
   virtual const char *plotter(void) const { return "live"; }
@@ -2981,10 +3031,14 @@ class VisDQMLiveSource : public VisDQMSource {
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) { // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 
   void exit(void) {
@@ -3046,12 +3100,9 @@ class VisDQMArchiveWatch {
   bool changed_;
   Time mtime_;
 
- public:
+public:
   VisDQMArchiveWatch(const Filename &path)
-      : thread_((pthread_t)-1),
-        path_(path),
-        stop_(false),
-        changed_(false),
+      : thread_((pthread_t)-1), path_(path), stop_(false), changed_(false),
         mtime_(0) {
     pthread_mutex_init(&lock_, 0);
     pthread_cond_init(&stopsig_, 0);
@@ -3083,7 +3134,7 @@ class VisDQMArchiveWatch {
     pthread_mutex_unlock(&lock_);
   }
 
- private:
+private:
   static void *run(void *arg) { return ((VisDQMArchiveWatch *)arg)->dorun(); }
 
   void *dorun(void) {
@@ -3100,7 +3151,8 @@ class VisDQMArchiveWatch {
 #endif
       delay.tv_sec += 30;
       pthread_cond_timedwait(&stopsig_, &lock_, &delay);
-      if (!stop_) checkForUpdate();
+      if (!stop_)
+        checkForUpdate();
     }
 
     pthread_mutex_unlock(&lock_);
@@ -3131,17 +3183,18 @@ class VisDQMArchiveSource : public VisDQMSource {
   VisDQMCache cache_;
   VisDQMIndex index_;
   SampleList samples_;
-  StringAtomTree vnames_;     // CMSSWNAMES;
-  StringAtomTree dsnames_;    // DATASETNAMES;
-  StringAtomTree objnames_;   // OBJECTNAMES;
-  StringAtomTree streamers_;  // STREAMERS;
+  StringAtomTree vnames_;    // CMSSWNAMES;
+  StringAtomTree dsnames_;   // DATASETNAMES;
+  StringAtomTree objnames_;  // OBJECTNAMES;
+  StringAtomTree streamers_; // STREAMERS;
   FileMap infoFiles_;
   FileMap dataFiles_;
   VisDQMRenderLink *link_;
 
   // Helper utility to close a DQM file before destroying it.
   static void closeDQMFile(VisDQMFile *f) {
-    if (f && f->path()) f->close();
+    if (f && f->path())
+      f->close();
   }
 
   // Utility function to reset current data contents.  Must be called
@@ -3270,25 +3323,20 @@ class VisDQMArchiveSource : public VisDQMSource {
     return i;
   }
 
- public:
+public:
   VisDQMArchiveSource(py::object /* gui */, py::dict opts)
-      : rxonline_(py::extract<std::string>(opts["rxonline"])),
-        retry_(false),
-        path_(Filename(py::extract<std::string>(opts["index"]))),
-        watch_(path_),
-        cache_(300 * 1024 * 1024),
-        index_(path_, &cache_),
-        vnames_(CMSSWNAMES),
-        dsnames_(DATASETNAMES),
-        objnames_(OBJECTNAMES),
-        streamers_(STREAMERS),
+      : rxonline_(py::extract<std::string>(opts["rxonline"])), retry_(false),
+        path_(Filename(py::extract<std::string>(opts["index"]))), watch_(path_),
+        cache_(300 * 1024 * 1024), index_(path_, &cache_), vnames_(CMSSWNAMES),
+        dsnames_(DATASETNAMES), objnames_(OBJECTNAMES), streamers_(STREAMERS),
         link_(VisDQMRenderLink::instance()) {
     rxonline_.study();
     pthread_rwlock_init(&lock_, 0);
   }
 
   ~VisDQMArchiveSource(void) {
-    if (watch_.running()) watch_.stop();
+    if (watch_.running())
+      watch_.stop();
   }
 
   virtual const char *plotter(void) const { return "archive"; }
@@ -3296,7 +3344,8 @@ class VisDQMArchiveSource : public VisDQMSource {
   virtual const char *jsoner(void) const { return "archive"; }
 
   void exit(void) {
-    if (watch_.running()) watch_.stop();
+    if (watch_.running())
+      watch_.stop();
   }
 
   static inline void makeBinLabel(char *buff, uint64_t value) {
@@ -3345,8 +3394,10 @@ class VisDQMArchiveSource : public VisDQMSource {
                 obj.flags = s->properties;
                 obj.tag = s->tag;
                 obj.version = si->lastImportTime;
-                if (data) obj.scalar.append(data, s->dataLength - 1);
-                if (qdata) obj.qdata.append(qdata, s->qtestLength);
+                if (data)
+                  obj.scalar.append(data, s->dataLength - 1);
+                if (qdata)
+                  obj.qdata.append(qdata, s->qtestLength);
                 streamers = streamers_.key(si->streamerInfoIdx);
               }
             }
@@ -3368,11 +3419,14 @@ class VisDQMArchiveSource : public VisDQMSource {
         // Not found, return null data.
         break;
       } catch (Error &e) {
-        if (fileReadFailure(ntries, e.explain().c_str())) break;
+        if (fileReadFailure(ntries, e.explain().c_str()))
+          break;
       } catch (std::exception &e) {
-        if (fileReadFailure(ntries, e.what())) break;
+        if (fileReadFailure(ntries, e.what()))
+          break;
       } catch (...) {
-        if (fileReadFailure(ntries, "(unknown error)")) break;
+        if (fileReadFailure(ntries, "(unknown error)"))
+          break;
       }
     }
   }
@@ -3410,18 +3464,22 @@ class VisDQMArchiveSource : public VisDQMSource {
           VisDQMFile::ReadHead rdhead(file.get(), keyidx);
           if (!rdhead.isdone()) {
             rdhead.get(&key, &begin, &end);
-            if (key == keyidx) attrs = *(VisDQMIndex::Summary *)begin;
+            if (key == keyidx)
+              attrs = *(VisDQMIndex::Summary *)begin;
           }
         }
 
         // No error, return.
         break;
       } catch (Error &e) {
-        if (fileReadFailure(ntries, e.explain().c_str())) break;
+        if (fileReadFailure(ntries, e.explain().c_str()))
+          break;
       } catch (std::exception &e) {
-        if (fileReadFailure(ntries, e.what())) break;
+        if (fileReadFailure(ntries, e.what()))
+          break;
       } catch (...) {
-        if (fileReadFailure(ntries, "(unknown error)")) break;
+        if (fileReadFailure(ntries, "(unknown error)"))
+          break;
       }
     }
   }
@@ -3468,10 +3526,14 @@ class VisDQMArchiveSource : public VisDQMSource {
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) { // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 
   // Refresh data from the database for a run.  Checks if the master
@@ -3486,7 +3548,8 @@ class VisDQMArchiveSource : public VisDQMSource {
               VisDQMEventNum &current, VisDQMRegexp *rxmatch, Regexp *rxsearch,
               bool *alarm) {
     // No point in even trying unless this is archived data.
-    if (sample.type < SAMPLE_ONLINE_DATA || sample.type >= SAMPLE_ANY) return;
+    if (sample.type < SAMPLE_ONLINE_DATA || sample.type >= SAMPLE_ANY)
+      return;
 
     // Keep retrying until we can successfully read the data.
     for (int ntries = 1; true; ++ntries) {
@@ -3499,7 +3562,8 @@ class VisDQMArchiveSource : public VisDQMSource {
         SampleList::const_iterator si = findSample(sample);
 
         // Return with empty "items" if we didn't find the sample.
-        if (si == samples_.end()) return;
+        if (si == samples_.end())
+          return;
 
         // Found the sample, try opening the data file.  If this
         // fails we will end up in the catch statement which will
@@ -3519,7 +3583,8 @@ class VisDQMArchiveSource : public VisDQMSource {
           // FIXME: handle keys other than run summary?
           uint64_t keyparts[4] = {key.sampleidx(), key.type(), key.lumiend(),
                                   key.objnameidx()};
-          if (keyparts[0] != keyidx.sampleidx() || keyparts[1] != 0) break;
+          if (keyparts[0] != keyidx.sampleidx() || keyparts[1] != 0)
+            break;
 
           VisDQMIndex::Summary *s = (VisDQMIndex::Summary *)begin;
           uint32_t report =
@@ -3549,7 +3614,8 @@ class VisDQMArchiveSource : public VisDQMSource {
           i->name = sname;
           i->plotter = this;
           buildParentNames(i->parents, i->name);
-          if (s->dataLength) i->data = data;
+          if (s->dataLength)
+            i->data = data;
 
           items[i->name] = i;
         }
@@ -3560,11 +3626,14 @@ class VisDQMArchiveSource : public VisDQMSource {
         // Successfully read the data, return.
         return;
       } catch (Error &e) {
-        if (fileReadFailure(ntries, e.explain().c_str())) return;
+        if (fileReadFailure(ntries, e.explain().c_str()))
+          return;
       } catch (std::exception &e) {
-        if (fileReadFailure(ntries, e.what())) return;
+        if (fileReadFailure(ntries, e.what()))
+          return;
       } catch (...) {
-        if (fileReadFailure(ntries, "(unknown error)")) return;
+        if (fileReadFailure(ntries, "(unknown error)"))
+          return;
       }
     }
   }
@@ -3605,12 +3674,10 @@ class VisDQMArchiveSource : public VisDQMSource {
           runnr = newest->runNumber;
           dataset = dsnames_.key(newest->datasetNameIdx);
           importversion = newest->importVersion;
-          type = (newest->cmsswVersion > 0
-                      ? SAMPLE_OFFLINE_RELVAL
-                      : newest->runNumber == 1 ? SAMPLE_OFFLINE_MC
-                                               : rxonline_.search(dataset) < 0
-                                                     ? SAMPLE_OFFLINE_DATA
-                                                     : SAMPLE_ONLINE_DATA);
+          type = (newest->cmsswVersion > 0        ? SAMPLE_OFFLINE_RELVAL
+                  : newest->runNumber == 1        ? SAMPLE_OFFLINE_MC
+                  : rxonline_.search(dataset) < 0 ? SAMPLE_OFFLINE_DATA
+                                                  : SAMPLE_ONLINE_DATA);
         }
       }
 
@@ -3636,7 +3703,8 @@ class VisDQMArchiveSource : public VisDQMSource {
                     double &stamp, const std::string &mename,
                     std::set<std::string> &dirs, shared_ptr<Regexp> rxname) {
     // No point in even trying unless this is archived data.
-    if (sample.type < SAMPLE_ONLINE_DATA) return;
+    if (sample.type < SAMPLE_ONLINE_DATA)
+      return;
 
     // Keep retrying until we can successfully read the data.
     for (int ntries = 1; true; ++ntries) {
@@ -3649,7 +3717,8 @@ class VisDQMArchiveSource : public VisDQMSource {
         SampleList::const_iterator si = findSample(sample);
 
         // Return with empty "items" if we didn't find the sample.
-        if (si == samples_.end()) return;
+        if (si == samples_.end())
+          return;
 
         // Stamp as latest import time.
         stamp = std::max(stamp, si->processedTime * 1e-9);
@@ -3697,7 +3766,8 @@ class VisDQMArchiveSource : public VisDQMSource {
           splitPath(dir, name, path);
 
           // Apply regex for the ME name
-          if (rxname && rxname->search(name)) continue;
+          if (rxname && rxname->search(name))
+            continue;
 
           if (rootpath == dir)
             /* Keep object directly in rootpath directory */;
@@ -3713,7 +3783,8 @@ class VisDQMArchiveSource : public VisDQMSource {
 
           // If we filter by ME name, get rid of this ME in case we
           // have no match
-          if (!mename.empty() && mename != name) continue;
+          if (!mename.empty() && mename != name)
+            continue;
 
           // Get data for this object.
           if (fulldata) {
@@ -3748,11 +3819,14 @@ class VisDQMArchiveSource : public VisDQMSource {
         // Successfully read the data, return.
         return;
       } catch (Error &e) {
-        if (fileReadFailure(ntries, e.explain().c_str())) return;
+        if (fileReadFailure(ntries, e.explain().c_str()))
+          return;
       } catch (std::exception &e) {
-        if (fileReadFailure(ntries, e.what())) return;
+        if (fileReadFailure(ntries, e.what()))
+          return;
       } catch (...) {
-        if (fileReadFailure(ntries, "(unknown error)")) return;
+        if (fileReadFailure(ntries, "(unknown error)"))
+          return;
       }
     }
   }
@@ -3765,7 +3839,8 @@ class VisDQMArchiveSource : public VisDQMSource {
     axisvals.reserve(4000);
     char tmpbuf[64];
     // No point in even trying unless this is archived data.
-    if (sample.type < SAMPLE_ONLINE_DATA) return;
+    if (sample.type < SAMPLE_ONLINE_DATA)
+      return;
 
     // Keep retrying until we can successfully read the data.
     for (int ntries = 1; true; ++ntries) {
@@ -3778,7 +3853,8 @@ class VisDQMArchiveSource : public VisDQMSource {
         SampleList::const_iterator si = findSample(sample);
 
         // Return with empty "items" if we didn't find the sample.
-        if (si == samples_.end()) return;
+        if (si == samples_.end())
+          return;
 
         // Found the sample, try opening the info file.  If this
         // fails we will end up in the catch statement which will
@@ -3799,8 +3875,10 @@ class VisDQMArchiveSource : public VisDQMSource {
           rdinfo.get(&ikey, &begin, &end);
           uint64_t keyparts[4] = {ikey.sampleidx(), ikey.type(), ikey.lumiend(),
                                   ikey.objnameidx()};
-          if (keyparts[0] != keyidx.sampleidx()) break;
-          if (keyparts[1] == 0) continue;
+          if (keyparts[0] != keyidx.sampleidx())
+            break;
+          if (keyparts[1] == 0)
+            continue;
 
           VisDQMIndex::Summary *s = (VisDQMIndex::Summary *)begin;
           const std::string &path = objnames_.key(keyparts[3]);
@@ -3809,11 +3887,13 @@ class VisDQMArchiveSource : public VisDQMSource {
           splitPath(dir, name, path);
 
           // Skip object outside directory of interest to us.
-          if (rootpath != dir) continue;
+          if (rootpath != dir)
+            continue;
 
           // Select only the proper variable, in case one was
           // supplied.
-          if (!variableName.empty() && variableName != name) continue;
+          if (!variableName.empty() && variableName != name)
+            continue;
 
           uint32_t type = s->properties & DQMNet::DQM_PROP_TYPE_MASK;
           // Expose only scalar data: there is no point in making a
@@ -3852,11 +3932,14 @@ class VisDQMArchiveSource : public VisDQMSource {
         // Successfully read the data, return.
         return;
       } catch (Error &e) {
-        if (fileReadFailure(ntries, e.explain().c_str())) return;
+        if (fileReadFailure(ntries, e.explain().c_str()))
+          return;
       } catch (std::exception &e) {
-        if (fileReadFailure(ntries, e.what())) return;
+        if (fileReadFailure(ntries, e.what()))
+          return;
       } catch (...) {
-        if (fileReadFailure(ntries, "(unknown error)")) return;
+        if (fileReadFailure(ntries, "(unknown error)"))
+          return;
       }
     }
   }
@@ -3872,7 +3955,8 @@ class VisDQMArchiveSource : public VisDQMSource {
       SampleList::const_iterator se;
       samples.reserve(samples.size() + samples_.size());
       for (si = samples_.begin(), se = samples_.end(); si != se; ++si) {
-        if (!si->numObjects) continue;
+        if (!si->numObjects)
+          continue;
 
         samples.push_back(VisDQMSample());
         VisDQMSample &s = samples.back();
@@ -3880,12 +3964,10 @@ class VisDQMArchiveSource : public VisDQMSource {
         s.version = vnames_.key(si->cmsswVersion);
         s.importversion = si->importVersion;
         s.runnr = si->runNumber;
-        s.type = (si->cmsswVersion > 0
-                      ? SAMPLE_OFFLINE_RELVAL
-                      : si->runNumber == 1 ? SAMPLE_OFFLINE_MC
-                                           : rxonline_.search(s.dataset) < 0
-                                                 ? SAMPLE_OFFLINE_DATA
-                                                 : SAMPLE_ONLINE_DATA);
+        s.type = (si->cmsswVersion > 0              ? SAMPLE_OFFLINE_RELVAL
+                  : si->runNumber == 1              ? SAMPLE_OFFLINE_MC
+                  : rxonline_.search(s.dataset) < 0 ? SAMPLE_OFFLINE_DATA
+                                                    : SAMPLE_ONLINE_DATA);
         s.origin = this;
         s.time = si->processedTime;
       }
@@ -3903,7 +3985,7 @@ class VisDQMArchiveSource : public VisDQMSource {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 class VisDQMWorkspace {
- protected:
+protected:
   py::object gui_;
   double guiTimeStamp_;
   std::string guiServiceName_;
@@ -3912,13 +3994,11 @@ class VisDQMWorkspace {
   std::string workspaceName_;
   void (*snapdump_)(const char *);
 
- public:
+public:
   VisDQMWorkspace(py::object gui, const std::string &name)
-      : gui_(gui),
-        guiTimeStamp_(py::extract<double>(gui.attr("stamp"))),
+      : gui_(gui), guiTimeStamp_(py::extract<double>(gui.attr("stamp"))),
         guiServiceName_(py::extract<std::string>(gui.attr("serviceName"))),
-        workspaceName_(name),
-        snapdump_(0) {
+        workspaceName_(name), snapdump_(0) {
     if (void *sym = dlsym(0, "igprof_dump_now"))
       snapdump_ = (void (*)(const char *))sym;
   }
@@ -3948,7 +4028,8 @@ class VisDQMWorkspace {
     VisDQMSample sample(sessionSample(session));
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
@@ -3967,9 +4048,11 @@ class VisDQMWorkspace {
         VisDQMSample &s = samples[i];
 
         // Stay on current sample type
-        if (s.type != sample.type) continue;
+        if (s.type != sample.type)
+          continue;
         // Stay on current dataset
-        if (s.dataset != sample.dataset) continue;
+        if (s.dataset != sample.dataset)
+          continue;
         runlist.insert(s.runnr);
       }
     }
@@ -3983,7 +4066,7 @@ class VisDQMWorkspace {
       return curr == runlist.begin() ? *curr : *(--curr);
   }
 
- protected:
+protected:
   template <class T>
   T workspaceParam(const py::dict &session, const char *key) {
     py::dict d = py::extract<py::dict>(session.get(key));
@@ -4054,8 +4137,7 @@ class VisDQMWorkspace {
     jh = py::extract<int>(session.get("dqm.zoom.jh", -1));
     jsrootmode = py::extract<bool>(session.get("dqm.zoom.jsrootmode", false));
 
-    return StringFormat(
-               "'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
+    return StringFormat("'zoom':{'show':%1,'x':%2,'y':%3,'w':%4,'h':%5,\
                            'jsonmode':%6,'jx':%7,'jy':%8,'jw':%9,'jh':%10,'jsrootmode':%11}")
         .arg(show)
         .arg(x)
@@ -4095,7 +4177,7 @@ class VisDQMWorkspace {
   static std::string sessionReferenceOne(const py::dict &ref) {
     return StringFormat(
                "{'type':'%1','run':%2,'dataset':%3, 'label':%4, 'ktest':%5}")
-        .arg(py::extract<std::string>(ref.get("type")))  // refobj, other, none
+        .arg(py::extract<std::string>(ref.get("type"))) // refobj, other, none
         .arg(stringToJSON(py::extract<std::string>(ref.get("run"))))
         .arg(stringToJSON(py::extract<std::string>(ref.get("dataset"))))
         .arg(stringToJSON(py::extract<std::string>(ref.get("label"))))
@@ -4110,15 +4192,13 @@ class VisDQMWorkspace {
     std::string ref2(sessionReferenceOne(py::extract<py::dict>(refspec[1])));
     std::string ref3(sessionReferenceOne(py::extract<py::dict>(refspec[2])));
     std::string ref4(sessionReferenceOne(py::extract<py::dict>(refspec[3])));
-    return StringFormat(
-               "{'position':'%1', 'show':'%2', 'norm': '%3',\
+    return StringFormat("{'position':'%1', 'show':'%2', 'norm': '%3',\
                             'param':[%4,%5,%6,%7]}")
         .arg(py::extract<std::string>(
-            refdict.get("position")))  // overlay, on-side
-        .arg(
-            py::extract<std::string>(refdict.get("show")))  // all, none, custom
+            refdict.get("position")))                       // overlay, on-side
+        .arg(py::extract<std::string>(refdict.get("show"))) // all, none, custom
         .arg(py::extract<std::string>(
-            refdict.get("norm")))  // true, false, as string
+            refdict.get("norm"))) // true, false, as string
         .arg(ref1)
         .arg(ref2)
         .arg(ref3)
@@ -4138,35 +4218,34 @@ class VisDQMWorkspace {
   }
 
   // Produce a standard response.
-  std::string makeResponse(
-      const std::string &state, int interval, VisDQMEventNum &current,
-      const std::string &services, const std::string &workspace,
-      const std::string &workspaces, const std::string &submenu,
-      const VisDQMSample &sample, const std::string &filter,
-      const std::string &showstats, const std::string &showerrbars,
-      const std::string &reference, const std::string &strip,
-      const std::string &rxstr, const std::string &rxerr, size_t rxmatches,
-      const std::string &toolspanel, Time startTime) {
+  std::string
+  makeResponse(const std::string &state, int interval, VisDQMEventNum &current,
+               const std::string &services, const std::string &workspace,
+               const std::string &workspaces, const std::string &submenu,
+               const VisDQMSample &sample, const std::string &filter,
+               const std::string &showstats, const std::string &showerrbars,
+               const std::string &reference, const std::string &strip,
+               const std::string &rxstr, const std::string &rxerr,
+               size_t rxmatches, const std::string &toolspanel,
+               Time startTime) {
     StringFormat result =
-        StringFormat(
-            "([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, "
-            "'serverTime':%21},"
-            "{'kind':'DQMHeaderRow', 'run':\"%3\", 'lumi':\"%4\", "
-            "'event':\"%5\","
-            " 'runstart':\"%6\", 'service':'%7', 'services':[%8], "
-            "'workspace':'%9',"
-            " 'workspaces':[%10], 'view':{'show':'%11','sample': %12, "
-            "'filter':'%13',"
-            " 'showstats': %14, 'showerrbars': %15, 'reference':%16, "
-            "'strip':%17,"
-            " 'search':%18, %19}},%20])")
+        StringFormat("([{'kind':'AutoUpdate', 'interval':%1, 'stamp':%2, "
+                     "'serverTime':%21},"
+                     "{'kind':'DQMHeaderRow', 'run':\"%3\", 'lumi':\"%4\", "
+                     "'event':\"%5\","
+                     " 'runstart':\"%6\", 'service':'%7', 'services':[%8], "
+                     "'workspace':'%9',"
+                     " 'workspaces':[%10], 'view':{'show':'%11','sample': %12, "
+                     "'filter':'%13',"
+                     " 'showstats': %14, 'showerrbars': %15, 'reference':%16, "
+                     "'strip':%17,"
+                     " 'search':%18, %19}},%20])")
             .arg(interval)
             .arg(guiTimeStamp_, 0, 'f')
-            .arg(current.runnr < 0
-                     ? std::string("(None)")
-                     : current.runnr <= 1
-                           ? std::string("(Simulated)")
-                           : thousands(StringFormat("%1").arg(current.runnr)))
+            .arg(current.runnr < 0 ? std::string("(None)")
+                 : current.runnr <= 1
+                     ? std::string("(Simulated)")
+                     : thousands(StringFormat("%1").arg(current.runnr)))
             .arg(current.luminr < 0
                      ? std::string("(None)")
                      : thousands(StringFormat("%1").arg(current.luminr)))
@@ -4203,7 +4282,8 @@ class VisDQMWorkspace {
     py::stl_input_iterator<py::object> i(sources), e;
     for (; i != e; ++i) {
       py::extract<VisDQMSource *> x(*i);
-      if (x.check()) into.push_back(x());
+      if (x.check())
+        into.push_back(x());
     }
   }
 
@@ -4373,7 +4453,7 @@ class VisDQMWorkspace {
     }
   }
 
- private:
+private:
   VisDQMWorkspace(VisDQMWorkspace &);
   VisDQMWorkspace &operator=(VisDQMWorkspace &);
 };
@@ -4387,7 +4467,7 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
 
   Regexp rxevi_;
 
- public:
+public:
   VisDQMSummaryWorkspace(py::object gui, const std::string &name)
       : VisDQMWorkspace(gui, name), rxevi_("(.*?)/EventInfo/(.*)") {
     rxevi_.study();
@@ -4421,14 +4501,15 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
     makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
       PyReleaseInterpreterLock nogil;
 
       VisDQMItems contents;
-      StringAtomSet myobjs;  // deliberately empty, not needed
+      StringAtomSet myobjs; // deliberately empty, not needed
       VisDQMItems::iterator ci, ce;
       VisDQMStatusMap status;
       RegexpMatch m;
@@ -4451,15 +4532,18 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
 
       for (ci = contents.begin(), ce = contents.end(); ci != ce; ++ci) {
         VisDQMItem &o = *ci->second;
-        if (!isScalarType(o.flags)) continue;
+        if (!isScalarType(o.flags))
+          continue;
 
         m.reset();
-        if (!rxevi_.match(o.name.string(), 0, 0, &m)) continue;
+        if (!rxevi_.match(o.name.string(), 0, 0, &m))
+          continue;
 
         std::string system(m.matchString(o.name.string(), 1));
         std::string param(m.matchString(o.name.string(), 2));
 
-        if (rxsearch && rxsearch->search(system) < 0) continue;
+        if (rxsearch && rxsearch->search(system) < 0)
+          continue;
 
         // Alarm filter. Somewhat convoluted as we need to dig out the
         // report summary value, and use the value known by JavaScript
@@ -4471,7 +4555,8 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
           VisDQMItems::iterator pos = contents.find(reportSummary);
           if (pos != ce && isRealType(pos->second->flags)) {
             double value = atof(pos->second->data.c_str());
-            if ((value >= 0 && value < 0.95) != alarms) continue;
+            if ((value >= 0 && value < 0.95) != alarms)
+              continue;
           }
         }
 
@@ -4501,7 +4586,7 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
     }
   }
 
- private:
+private:
   static std::string summaryToJSON(const SummaryMap &summary) {
     size_t len = 4 * summary.size();
     SummaryMap::const_iterator si, se;
@@ -4515,13 +4600,15 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
     std::string result;
     result.reserve(len + 1);
     for (si = summary.begin(), se = summary.end(); si != se; ++si) {
-      if (!result.empty()) result += ", ";
+      if (!result.empty())
+        result += ", ";
       result += "{";
 
       bool first = true;
       for (ki = si->second.begin(), ke = si->second.end(); ki != ke;
            ++ki, first = false) {
-        if (!first) result += ", ";
+        if (!first)
+          result += ", ";
         result += stringToJSON(ki->first);
         result += ":";
         result += stringToJSON(ki->second);
@@ -4538,17 +4625,16 @@ class VisDQMSummaryWorkspace : public VisDQMWorkspace {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 class VisDQMCertificationWorkspace : public VisDQMWorkspace {
-  typedef std::map<std::string, std::vector<std::string> > KeyVectorMap;
+  typedef std::map<std::string, std::vector<std::string>> KeyVectorMap;
 
   Regexp rxevi_;
 
- public:
+public:
   VisDQMCertificationWorkspace(py::object gui, const std::string &name)
       : VisDQMWorkspace(gui, name),
-        rxevi_(
-            "(.*?)/EventInfo/"
-            "(CertificationContents|DAQContents|DCSContents|"
-            "reportSummaryContents)/(.*)") {
+        rxevi_("(.*?)/EventInfo/"
+               "(CertificationContents|DAQContents|DCSContents|"
+               "reportSummaryContents)/(.*)") {
     rxevi_.study();
   }
 
@@ -4581,14 +4667,15 @@ class VisDQMCertificationWorkspace : public VisDQMWorkspace {
     makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
       PyReleaseInterpreterLock nogil;
 
       VisDQMItems contents;
-      StringAtomSet myobjs;  // deliberately empty, not needed
+      StringAtomSet myobjs; // deliberately empty, not needed
       VisDQMItems::iterator ci, ce;
       VisDQMStatusMap status;
       RegexpMatch m;
@@ -4602,16 +4689,19 @@ class VisDQMCertificationWorkspace : public VisDQMWorkspace {
 
       for (ci = contents.begin(), ce = contents.end(); ci != ce; ++ci) {
         VisDQMItem &o = *ci->second;
-        if (!isScalarType(o.flags)) continue;
+        if (!isScalarType(o.flags))
+          continue;
 
         m.reset();
-        if (!rxevi_.match(o.name.string(), 0, 0, &m)) continue;
+        if (!rxevi_.match(o.name.string(), 0, 0, &m))
+          continue;
 
         std::string system(m.matchString(o.name.string(), 1));
         std::string kind(m.matchString(o.name.string(), 2));
         std::string variable(m.matchString(o.name.string(), 3));
 
-        if (rxsearch && rxsearch->search(system) < 0) continue;
+        if (rxsearch && rxsearch->search(system) < 0)
+          continue;
 
         std::vector<std::string> &info = cert[system];
         if (info.empty()) {
@@ -4636,7 +4726,7 @@ class VisDQMCertificationWorkspace : public VisDQMWorkspace {
     }
   }
 
- private:
+private:
   static std::string certificationToJSON(const KeyVectorMap &cert) {
     size_t len = 4 * cert.size();
     KeyVectorMap::const_iterator si, se;
@@ -4651,7 +4741,8 @@ class VisDQMCertificationWorkspace : public VisDQMWorkspace {
     result.reserve(len + 1);
     bool first = true;
     for (si = cert.begin(), se = cert.end(); si != se; ++si, first = false) {
-      if (!first) result += ", ";
+      if (!first)
+        result += ", ";
       result +=
           StringFormat("{ \"text\": \"%1\", \"children\": [").arg(si->first);
       std::string prevFolder = "";
@@ -4668,11 +4759,11 @@ class VisDQMCertificationWorkspace : public VisDQMWorkspace {
         }
         if (prevFolder != validationFolder) {
           prevFolder = validationFolder;
-          result += StringFormat(
-                        "]}, { \"text\": \"%1\", \"children\": [{\"text\": "
-                        "\"%2\", \"leaf\": true}")
-                        .arg(validationFolder)
-                        .arg(variable);
+          result +=
+              StringFormat("]}, { \"text\": \"%1\", \"children\": [{\"text\": "
+                           "\"%2\", \"leaf\": true}")
+                  .arg(validationFolder)
+                  .arg(variable);
         } else
           result +=
               StringFormat(",{\"text\": \"%1\", \"leaf\": true}").arg(variable);
@@ -4697,7 +4788,7 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
 
   typedef std::map<std::string, QMapItem> QMap;
 
- public:
+public:
   VisDQMQualityWorkspace(py::object gui, const std::string &name)
       : VisDQMWorkspace(gui, name) {}
 
@@ -4728,14 +4819,15 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
     makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
       PyReleaseInterpreterLock nogil;
 
       VisDQMItems contents;
-      StringAtomSet myobjs;  // deliberately empty, not needed
+      StringAtomSet myobjs; // deliberately empty, not needed
       VisDQMItems::iterator ci, ce;
       std::string plotter;
       std::string label;
@@ -4756,7 +4848,8 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
 
       for (ci = contents.begin(), ce = contents.end(); ci != ce; ++ci) {
         VisDQMItem &o = *ci->second;
-        if (o.name.string().size() < 27) continue;
+        if (o.name.string().size() < 27)
+          continue;
 
         size_t pos = o.name.string().size() - 27;
         if (o.name.string().compare(pos, 27, "/EventInfo/reportSummaryMap") !=
@@ -4765,9 +4858,11 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
 
         if (!isScalarType(o.flags)) {
           size_t start = o.name.string().rfind('/', pos ? pos - 1 : 0);
-          if (start == std::string::npos) start = 0;
+          if (start == std::string::npos)
+            start = 0;
           label = o.name.string().substr(start, pos - start);
-          if (rxsearch && rxsearch->search(label) < 0) continue;
+          if (rxsearch && rxsearch->search(label) < 0)
+            continue;
 
           StringAtom reportSummary(&stree, label + "/EventInfo/reportSummary",
                                    StringAtom::TestOnly);
@@ -4782,7 +4877,8 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
             VisDQMItems::iterator pos = contents.find(reportSummary);
             if (pos != ce && isRealType(pos->second->flags)) {
               double value = atof(pos->second->data.c_str());
-              if ((value >= 0 && value < 0.95) != alarms) continue;
+              if ((value >= 0 && value < 0.95) != alarms)
+                continue;
             }
           }
 
@@ -4816,7 +4912,7 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
     }
   }
 
- private:
+private:
   static std::string qmapToJSON(const QMap &qmap) {
     size_t len = 30 * qmap.size();
     QMap::const_iterator i, e;
@@ -4830,7 +4926,8 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
     for (i = qmap.begin(), e = qmap.end(); i != e; ++i) {
       char buf[32];
       __extension__ sprintf(buf, "%ju", (uintmax_t)i->second.version);
-      if (!result.empty()) result += ", ";
+      if (!result.empty())
+        result += ", ";
       result += "{'label':";
       result += stringToJSON(i->first);
       result += ",'version':";
@@ -4854,7 +4951,7 @@ class VisDQMQualityWorkspace : public VisDQMWorkspace {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 class VisDQMSampleWorkspace : public VisDQMWorkspace {
- public:
+public:
   VisDQMSampleWorkspace(py::object gui, const std::string &name)
       : VisDQMWorkspace(gui, name) {}
 
@@ -4877,15 +4974,17 @@ class VisDQMSampleWorkspace : public VisDQMWorkspace {
 
     // If the current sample is live, force varying off, otherwise
     // it's too hard for users to find anything else than the live.
-    if (sample.type == SAMPLE_LIVE) vary = "any";
+    if (sample.type == SAMPLE_LIVE)
+      vary = "any";
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
       typedef std::set<std::string> MatchSet;
-      typedef std::list<std::pair<std::string, shared_ptr<Regexp> > > RXList;
+      typedef std::list<std::pair<std::string, shared_ptr<Regexp>>> RXList;
 
       PyReleaseInterpreterLock nogil;
       VisDQMSamples samples;
@@ -4915,11 +5014,13 @@ class VisDQMSampleWorkspace : public VisDQMWorkspace {
         errno = 0;
         char *p = 0;
         strtol(pats[i].c_str(), &p, 10);
-        if (p && !*p && !errno) runlist.push_back(pats[i]);
+        if (p && !*p && !errno)
+          runlist.push_back(pats[i]);
 
         shared_ptr<Regexp> rx;
         makerx(pats[i], rx, rxerr, Regexp::IgnoreCase);
-        if (rx) rxlist.push_back(RXList::value_type(pats[i], rx));
+        if (rx)
+          rxlist.push_back(RXList::value_type(pats[i], rx));
       }
 
       // Request samples from backends.
@@ -4962,7 +5063,8 @@ class VisDQMSampleWorkspace : public VisDQMWorkspace {
         for (rli = runlist.begin(), rle = runlist.end(); rli != rle; ++rli) {
           char buf[32];
           sprintf(buf, "%ld", s.runnr);
-          if (!strncmp(buf, rli->c_str(), rli->size())) matched.insert(*rli);
+          if (!strncmp(buf, rli->c_str(), rli->size()))
+            matched.insert(*rli);
         }
 
         for (rxi = rxlist.begin(), rxe = rxlist.end(); rxi != rxe; ++rxi)
@@ -4970,38 +5072,39 @@ class VisDQMSampleWorkspace : public VisDQMWorkspace {
               rxi->second->search(sampleTypeLabel[s.type]) >= 0)
             matched.insert(rxi->first);
 
-        if (matched.size() == uqpats.size()) final.push_back(samples[i]);
+        if (matched.size() == uqpats.size())
+          final.push_back(samples[i]);
       }
 
       std::sort(final.begin(), final.end(),
                 (order == "run" ? orderSamplesByRun : orderSamplesByDataset));
 
-      StringFormat result = StringFormat(
-                                "([{'kind':'AutoUpdate', 'interval':%1, "
-                                "'stamp':%2, 'serverTime':%9},"
-                                "{'kind':'DQMSample', 'vary':%3, 'order':%4, "
-                                "'dynsearch':%5, 'search':%6, 'current':%7,"
-                                " 'items':[%8]}])")
-                                .arg(sample.type == SAMPLE_LIVE ? 30 : 300)
-                                .arg(guiTimeStamp_, 0, 'f')
-                                .arg(stringToJSON(vary))
-                                .arg(stringToJSON(order))
-                                .arg(stringToJSON(dynsearch))
-                                .arg(stringToJSON(pat))
-                                .arg(sampleToJSON(sample))
-                                .arg(samplesToJSON(final));
+      StringFormat result =
+          StringFormat("([{'kind':'AutoUpdate', 'interval':%1, "
+                       "'stamp':%2, 'serverTime':%9},"
+                       "{'kind':'DQMSample', 'vary':%3, 'order':%4, "
+                       "'dynsearch':%5, 'search':%6, 'current':%7,"
+                       " 'items':[%8]}])")
+              .arg(sample.type == SAMPLE_LIVE ? 30 : 300)
+              .arg(guiTimeStamp_, 0, 'f')
+              .arg(stringToJSON(vary))
+              .arg(stringToJSON(order))
+              .arg(stringToJSON(dynsearch))
+              .arg(stringToJSON(pat))
+              .arg(sampleToJSON(sample))
+              .arg(samplesToJSON(final));
       return result.arg((Time::current() - startTime).ns() * 1e-6, 0, 'f');
     }
   }
 
- private:
+private:
 };
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 class VisDQMLayoutTools {
- protected:
+protected:
   static std::string axisToJSON(const VisDQMAxisOptions &axis) {
     return StringFormat("{'min':%1, 'max':%2, 'type':%3}")
         .arg(stringToJSON(axis.min, true))
@@ -5013,11 +5116,10 @@ class VisDQMLayoutTools {
                                   const VisDQMSample &sample) {
     char vbuf[64];
     __extension__ sprintf(vbuf, "%ju", (uintmax_t)x.version);
-    return StringFormat(
-               "{'name':%1, 'desc':%2, 'location':\"%3\","
-               " 'version':\"%4\", 'alarm':%5, 'live':%6,"
-               " 'xaxis':%7, 'yaxis':%8, 'zaxis':%9,"
-               " 'drawopts':%10, 'withref':%11, 'overlays':%12}")
+    return StringFormat("{'name':%1, 'desc':%2, 'location':\"%3\","
+                        " 'version':\"%4\", 'alarm':%5, 'live':%6,"
+                        " 'xaxis':%7, 'yaxis':%8, 'zaxis':%9,"
+                        " 'drawopts':%10, 'withref':%11, 'overlays':%12}")
         .arg(stringToJSON(x.name.string(), true))
         .arg(stringToJSON(x.desc, true))
         .arg(StringFormat("%1/%2%3")
@@ -5042,7 +5144,8 @@ class VisDQMLayoutTools {
     result.reserve(2048);
     result += '[';
     for (size_t i = 0, e = layout.columns.size(); i != e; ++i) {
-      if (i > 0) result += ", ";
+      if (i > 0)
+        result += ", ";
       result += layoutToJSON(*layout.columns[i], sample);
     }
     result += ']';
@@ -5056,19 +5159,18 @@ class VisDQMLayoutTools {
     result.reserve(2048);
     result += '[';
     for (size_t i = 0, e = layout.size(); i != e; ++i) {
-      if (i > 0) result += ", ";
+      if (i > 0)
+        result += ", ";
       result += layoutToJSON(*layout[i], sample);
     }
     result += ']';
     return result;
   }
 
-  static std::string shownToJSON(const VisDQMItems &contents,
-                                 const VisDQMStatusMap &status,
-                                 const VisDQMDrawOptionMap &drawopts,
-                                 const StringAtom &path,
-                                 const VisDQMSample &sample,
-                                 const StringAtomSet &shown) {
+  static std::string
+  shownToJSON(const VisDQMItems &contents, const VisDQMStatusMap &status,
+              const VisDQMDrawOptionMap &drawopts, const StringAtom &path,
+              const VisDQMSample &sample, const StringAtomSet &shown) {
     std::string prefix;
     if (!path.string().empty()) {
       prefix.reserve(path.size() + 2);
@@ -5095,7 +5197,8 @@ class VisDQMLayoutTools {
     names.insert(names.end(), subdirs.begin(), subdirs.end());
     std::sort(names.begin(), names.end(), natcmpstratom);
     for (size_t i = 0, e = names.size(); i < e; ++i) {
-      if (result.size() > 1) result += ", ";
+      if (result.size() > 1)
+        result += ", ";
 
       result += shownDirToJSON(contents, status, names[i]);
     }
@@ -5104,7 +5207,8 @@ class VisDQMLayoutTools {
     names.insert(names.end(), shown.begin(), shown.end());
     std::sort(names.begin(), names.end(), natcmpstratom);
     for (size_t i = 0, e = names.size(); i < e; ++i) {
-      if (result.size() > 1) result += ", ";
+      if (result.size() > 1)
+        result += ", ";
       result += shownObjToJSON(contents, status, drawopts, sample, names[i]);
     }
 
@@ -5139,20 +5243,26 @@ class VisDQMLayoutTools {
 
   static void copyAxisOptions(VisDQMAxisOptions &to,
                               const VisDQMAxisOptions &from) {
-    if (!from.min.empty()) to.min = from.min;
+    if (!from.min.empty())
+      to.min = from.min;
 
-    if (!from.max.empty()) to.max = from.max;
+    if (!from.max.empty())
+      to.max = from.max;
 
-    if (!from.type.empty()) to.type = from.type;
+    if (!from.type.empty())
+      to.type = from.type;
   }
 
   static void copyDrawOptions(VisDQMDrawOptions *to,
                               const VisDQMDrawOptions *from) {
-    if (!from) return;
+    if (!from)
+      return;
 
-    if (!from->withref.empty()) to->withref = from->withref;
+    if (!from->withref.empty())
+      to->withref = from->withref;
 
-    if (!from->drawopts.empty()) to->drawopts = from->drawopts;
+    if (!from->drawopts.empty())
+      to->drawopts = from->drawopts;
 
     copyAxisOptions(to->xaxis, from->xaxis);
     copyAxisOptions(to->yaxis, from->yaxis);
@@ -5189,7 +5299,8 @@ class VisDQMLayoutTools {
     if (!obj.layout) {
       VisDQMDrawOptionMap::const_iterator drawpos = drawopts.find(path);
       const VisDQMDrawOptions *xopts = 0;
-      if (drawpos != drawopts.end()) xopts = &drawpos->second;
+      if (drawpos != drawopts.end())
+        xopts = &drawpos->second;
 
       shared_ptr<VisDQMShownItem> item(new VisDQMShownItem);
       item->version = obj.version;
@@ -5236,7 +5347,8 @@ class VisDQMLayoutTools {
 
             VisDQMDrawOptionMap::const_iterator drawpos =
                 drawopts.find(col.path);
-            if (drawpos != drawopts.end()) xopts = &drawpos->second;
+            if (drawpos != drawopts.end())
+              xopts = &drawpos->second;
           } else {
             scol->version = 0;
             scol->nalarm = 0;
@@ -5262,13 +5374,14 @@ class VisDQMContentWorkspace : public VisDQMWorkspace,
   VisDQMRegexp rxmatch_;
   VisDQMRegexp rxlayout_;
 
- public:
+public:
   VisDQMContentWorkspace(py::object gui, const std::string &name,
                          const std::string &match, const std::string &layouts)
       : VisDQMWorkspace(gui, name) {
     if (!match.empty() && match != "^") {
       fastrx(rxmatch_, match);
-      if (layouts.empty()) fastrx(rxlayout_, "(" + match + "Layouts)/.*");
+      if (layouts.empty())
+        fastrx(rxlayout_, "(" + match + "Layouts)/.*");
     }
     if (!layouts.empty() && layouts != "^")
       fastrx(rxlayout_, "(" + layouts + ")/.*");
@@ -5294,7 +5407,7 @@ class VisDQMContentWorkspace : public VisDQMWorkspace,
     std::string zoom(sessionZoomConfig(session));
     std::string root(workspaceParam<std::string>(session, "dqm.root", ""));
     std::string focus(
-        workspaceParam<std::string>(session, "dqm.focus", ""));  // None
+        workspaceParam<std::string>(session, "dqm.focus", "")); // None
     std::string filter(py::extract<std::string>(session.get("dqm.filter")));
     std::string showstats(
         py::extract<std::string>(session.get("dqm.showstats")));
@@ -5324,7 +5437,8 @@ class VisDQMContentWorkspace : public VisDQMWorkspace,
     makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
@@ -5352,7 +5466,8 @@ class VisDQMContentWorkspace : public VisDQMWorkspace,
       buildShown(contents, shown, root);
       updateStatus(contents, status);
 
-      if (!status.count(StringAtom(&stree, root))) root = "";  // FIXME: #36093
+      if (!status.count(StringAtom(&stree, root)))
+        root = ""; // FIXME: #36093
 
       return makeResponse(
           StringFormat("{'kind':'DQMCanvas', 'items':%1,"
@@ -5385,7 +5500,7 @@ class VisDQMContentWorkspace : public VisDQMWorkspace,
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 class VisDQMPlayWorkspace : public VisDQMWorkspace, public VisDQMLayoutTools {
- public:
+public:
   VisDQMPlayWorkspace(py::object gui, const std::string &name)
       : VisDQMWorkspace(gui, name) {}
 
@@ -5438,7 +5553,8 @@ class VisDQMPlayWorkspace : public VisDQMWorkspace, public VisDQMLayoutTools {
     makerx(rxstr, rxsearch, rxerr, Regexp::IgnoreCase);
 
     // Give sources pre-scan warning so they can do python stuff.
-    for (size_t i = 0, e = srclist.size(); i != e; ++i) srclist[i]->prescan();
+    for (size_t i = 0, e = srclist.size(); i != e; ++i)
+      srclist[i]->prescan();
 
     // Now do the hard stuff, out of python.
     {
@@ -5465,7 +5581,8 @@ class VisDQMPlayWorkspace : public VisDQMWorkspace, public VisDQMLayoutTools {
       buildShown(contents, shown, root);
       updateStatus(contents, status);
 
-      if (!status.count(StringAtom(&stree, root))) root = "";  // FIXME: #36093
+      if (!status.count(StringAtom(&stree, root)))
+        root = ""; // FIXME: #36093
 
       if (shown.size())
         playpos = std::min(playpos, int(shown.size()) - 1);
@@ -5498,12 +5615,12 @@ class VisDQMPlayWorkspace : public VisDQMWorkspace, public VisDQMLayoutTools {
 //////////////////////////////////////////////////////////////////////
 VisDQMRenderLink *VisDQMRenderLink::s_instance;
 
-#define EXC_TRANSLATE(n, t, what)                  \
-  struct translate##n {                            \
-    static void translate(const t &e) {            \
-      PyErr_SetString(PyExc_RuntimeError, e.what); \
-    }                                              \
-  };                                               \
+#define EXC_TRANSLATE(n, t, what)                                              \
+  struct translate##n {                                                        \
+    static void translate(const t &e) {                                        \
+      PyErr_SetString(PyExc_RuntimeError, e.what);                             \
+    }                                                                          \
+  };                                                                           \
   py::register_exception_translator<t>(&translate##n ::translate)
 
 BOOST_PYTHON_MODULE(Accelerator) {
