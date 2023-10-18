@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Usage: dqm-ls [-s SERVER] [-n CONNECTIONS]
 
@@ -21,7 +21,7 @@ import sys, re, pycurl, urllib
 from optparse import OptionParser
 from time import time, strptime
 from calendar import timegm
-from urlparse import urlparse
+from urllib import parse
 
 # Object types.
 DIR = 0
@@ -42,96 +42,125 @@ nfetched = 0
 # Found objects.
 found = []
 
+
 def request_init(c, options, path):
-  """`RequestManager` callback to initialise directory contents request."""
-  c.setopt(pycurl.URL, options.server + urllib.quote(path) + ((path != "/" and "/") or ""))
+    """`RequestManager` callback to initialise directory contents request."""
+    c.setopt(
+        pycurl.URL, options.server + urllib.quote(path) + ((path != "/" and "/") or "")
+    )
+
 
 def report_error(c, task, errmsg, errno):
-  """`RequestManager` callback to report directory contents request errors."""
-  print >> sys.stderr, "FAILED to retrieve %s: %s (%d)" % (task, errmsg, errno)
-  global nfetched; nfetched += 1
+    """`RequestManager` callback to report directory contents request errors."""
+    sys.stderr.write("FAILED to retrieve %s: %s (%d)" % (task, errmsg, errno))
+    global nfetched
+    nfetched += 1
+
 
 def parse_dir(c):
-  """`RequestManager` callback to handle directory content response.
+    """`RequestManager` callback to handle directory content response.
 
-  This gets called once per every directory which has been successfully
-  retrieved from the server. It parses the HTML response and turns it
-  into object listing with all the file meta information.
+    This gets called once per every directory which has been successfully
+    retrieved from the server. It parses the HTML response and turns it
+    into object listing with all the file meta information.
 
-  If verbosity has been requested, also shows simple progress bar on the
-  search progress, one dot for every ten directories retrieved."""
-  options, path = c.task
-  root_url = urlparse(options.server).path.rstrip('/')
+    If verbosity has been requested, also shows simple progress bar on the
+    search progress, one dot for every ten directories retrieved."""
+    options, path = c.task
+    root_url = parse.urlparse(options.server).path.rstrip("/")
 
-  items = re.findall(r"<tr><td><a href='(.*?)'>(.*?)</a></td><td>(\d+|&nbsp;|-)</td>"
-                     r"<td>(&nbsp;|\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d UTC)</td>",
-                     c.buffer.getvalue())
+    items = re.findall(
+        r"<tr><td><a href='(.*?)'>(.*?)</a></td><td>(\d+|&nbsp;|-)</td>"
+        r"<td>(&nbsp;|\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d UTC)</td>",
+        c.buffer.getvalue(),
+    )
 
-  for path, name, size, date in items:
-    assert path.startswith(root_url)
-    path = path[len(root_url):]
+    for path, name, size, date in items:
+        assert path.startswith(root_url)
+        path = path[len(root_url) :]
 
-    if date == "&nbsp;":
-      date = -1
-    else:
-      date = timegm(strptime(date, "%Y-%m-%d %H:%M:%S %Z"))
+        if date == "&nbsp;":
+            date = -1
+        else:
+            date = timegm(strptime(date, "%Y-%m-%d %H:%M:%S %Z"))
 
-    if size == "&nbsp;" or size == "-":
-      size = -1
-    else:
-      size = int(size)
+        if size == "&nbsp;" or size == "-":
+            size = -1
+        else:
+            size = int(size)
 
-    if path.endswith("/"):
-      assert size == -1
-      path = path[:-1]
-      found.append((c.task, DIR, name, size, date, path))
-      reqman.put((options, path))
-    else:
-      assert size >= 0
-      found.append((c.task, FILE, name, size, date, path))
+        if path.endswith("/"):
+            assert size == -1
+            path = path[:-1]
+            found.append((c.task, DIR, name, size, date, path))
+            reqman.put((options, path))
+        else:
+            assert size >= 0
+            found.append((c.task, FILE, name, size, date, path))
 
-  global nfetched
-  nfetched += 1
-  if options.verbose and nfetched % 10 == 0:
-    sys.stdout.write(".")
-    sys.stdout.flush()
-    if nfetched % 750 == 0:
-      print
+    global nfetched
+    nfetched += 1
+    if options.verbose and nfetched % 10 == 0:
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        if nfetched % 750 == 0:
+            print
+
 
 # Parse command line options.
-op = OptionParser(usage = __doc__)
-op.add_option("-s", "--server", dest = "server",
-              type = "string", action = "store", metavar = "SERVER",
-              default = "https://cmsweb.cern.ch/dqm/offline/data/browse",
-              help = "Pull content from SERVER")
-op.add_option("-n", "--connections", dest = "connections",
-              type = "int", action = "store", metavar = "NUM",
-              default = 10, help = "Use NUM concurrent connections")
-op.add_option("-v", "--verbose", dest = "verbose",
-              action = "store_true", default = False,
-              help = "Show verbose scan information")
+op = OptionParser(usage=__doc__)
+op.add_option(
+    "-s",
+    "--server",
+    dest="server",
+    type="string",
+    action="store",
+    metavar="SERVER",
+    default="https://cmsweb.cern.ch/dqm/offline/data/browse",
+    help="Pull content from SERVER",
+)
+op.add_option(
+    "-n",
+    "--connections",
+    dest="connections",
+    type="int",
+    action="store",
+    metavar="NUM",
+    default=10,
+    help="Use NUM concurrent connections",
+)
+op.add_option(
+    "-v",
+    "--verbose",
+    dest="verbose",
+    action="store_true",
+    default=False,
+    help="Show verbose scan information",
+)
 options, args = op.parse_args()
 if args:
-  print >> sys.stderr, "Too many arguments"
-  sys.exit(1)
+    sys.stderr.write("Too many arguments")
+    sys.exit(1)
 if not options.server:
-  print >> sys.stderr, "Server contact string required"
-  sys.exit(1)
+    sys.stderr.write("Server contact string required")
+    sys.exit(1)
 
 # Get SSL X509 parametres.
 ssl_opts = SSLOptions()
 if options.verbose:
-  print "Using SSL cert dir", ssl_opts.ca_path
-  print "Using SSL private key", ssl_opts.key_file
-  print "Using SSL public key", ssl_opts.cert_file
+    print("Using SSL cert dir", ssl_opts.ca_path)
+    print("Using SSL private key", ssl_opts.key_file)
+    print("Using SSL public key", ssl_opts.cert_file)
 
 # Start a request manager for contents.
-reqman = RequestManager(num_connections = options.connections,
-                        ssl_opts = ssl_opts,
-                        user_agent = ident,
-                        request_init = request_init,
-                        request_respond = parse_dir,
-                        request_error = report_error)
+reqman = RequestManager(
+    num_connections=options.connections,
+    ssl_opts=ssl_opts,
+    user_agent=ident,
+    request_init=request_init,
+    request_respond=parse_dir,
+    request_error=report_error,
+)
 
 # Process from root directory.
 start = time()
@@ -140,6 +169,9 @@ reqman.process()
 end = time()
 
 if options.verbose:
-  print "\nFound %d directories, %d objects in %.3f seconds" % (nfetched, len(found), end - start)
-  # for x in sorted(found):
-  #   print repr(x)
+    print(
+        "\nFound %d directories, %d objects in %.3f seconds"
+        % (nfetched, len(found), end - start)
+    )
+    # for x in sorted(found):
+    #   print(repr(x))

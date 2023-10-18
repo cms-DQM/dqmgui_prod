@@ -31,13 +31,13 @@ class BaseIntegrationTest(unittest.TestCase):
         cls.upload_watch_interval = float(config.get('dqm', 'upload_watch_interval'))
         cls.upload_watch_retries = int(config.get('dqm', 'upload_watch_retries'))
         cls.temp_dir = tempfile.mkdtemp()
-        print 'setUp'
+        print('setUp')
 
     @classmethod
     def tearDownClass(cls):
         super(BaseIntegrationTest, cls).tearDownClass()
         shutil.rmtree(cls.temp_dir)
-        print 'tearDown'
+        print('tearDown')
 
     @classmethod
     def upload(cls, filename, path):
@@ -45,12 +45,12 @@ class BaseIntegrationTest(unittest.TestCase):
         try:
             subprocess.check_call(["visDQMUpload", cls.base_url, path])
         except (OSError, subprocess.CalledProcessError) as e:
-            print 'visDQMUpload script invokation failed'
-            print e
+            print('visDQMUpload script invokation failed')
+            print(e)
             try:
                 cls.upload_requests(filename, path)
             except ImportError as e:
-                print 'Either visDQMUpload must be available on path or requests library must be installed manually.'
+                print('Either visDQMUpload must be available on path or requests library must be installed manually.')
                 raise e
 
     @classmethod
@@ -64,7 +64,7 @@ class BaseIntegrationTest(unittest.TestCase):
         headers = {'User-agent': 'Integration tests'}
         response = requests.post(url, data=data, files=files, headers=headers)
 
-        print 'Uploaded. HTTP Status: %d, DQM-Status-Code: %s, DQM-Status-Message: %s, DQM-Status-Detail: %s, Body: %s' \
+        print('Uploaded. HTTP Status: %d, DQM-Status-Code: %s, DQM-Status-Message: %s, DQM-Status-Detail: %s, Body: %s' \)
               % (response.status_code, response.headers['DQM-Status-Code'], response.headers['DQM-Status-Message'],
                  response.headers['DQM-Status-Detail'], response.content)
 
@@ -112,8 +112,8 @@ class BaseIntegrationTest(unittest.TestCase):
             for types in choose_sample_json[1]['items']:
                 for item in types['items']:
                     if dataset == item['dataset']:
-                        print ''
-                        print 'Dataset %s found in %.3f with type %s, run %s, importversion %s, version %s' \
+                        print('')
+                        print('Dataset %s found in %.3f with type %s, run %s, importversion %s, version %s' \)
                               % (dataset, (time.time() - start_time), item['type'], item['run'], item['importversion'],
                                  item['version'])
                         return True

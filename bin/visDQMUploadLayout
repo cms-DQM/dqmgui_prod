@@ -1,77 +1,89 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from Monitoring.Core.HTTP import RequestManager
 from Monitoring.Core.X509 import SSLOptions
-import sys, os, string, mimetypes, json
-from cStringIO import StringIO
+import sys, os, mimetypes
+from io import StringIO
 from stat import *
 
-IDENT = "visDQMUploadLayout DQMGUI/%s python/%s" % \
-    (os.getenv('DQMGUI_VERSION', '?'), "%d.%d.%d" % sys.version_info[:3])
+IDENT = "visDQMUploadLayout DQMGUI/%s python/%s" % (
+    os.getenv("DQMGUI_VERSION", "?"),
+    "%d.%d.%d" % sys.version_info[:3],
+)
+
 
 def filetype(filename):
-  return mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    return mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
 
 def encode(args, files):
-  """
+    """
     Encode form (name, value) and (name, filename, type) elements into
     multi-part/form-data. We don't actually need to know what we are
     uploading here, so just claim it's all text/plain. See, e.g,
     http://www.ietf.org/rfc/rfc1867.txt for a clear explanation of the
     required format (section 6).
-  """
-  boundary = '----------=_DQM_FILE_BOUNDARY_=-----------'
-  (body, crlf) = ('', '\r\n')
-  for (key, value) in args.items():
-    body += '--' + boundary + crlf
-    body += ('Content-disposition: form-data; name="%s"' % key) + crlf
-    body += crlf + str(value) + crlf
-  for (key, filename) in files.items():
-    body += '--' + boundary + crlf
-    body += ('Content-Disposition: form-data; name="%s"; filename="%s"'
-             % (key, os.path.basename(filename))) + crlf
-    body += ('Content-Type: %s' % filetype(filename)) + crlf
-    body += crlf + open(filename, "r").read() + crlf
-  body += '--' + boundary + '--' + crlf + crlf
-  return ('multipart/form-data; boundary=' + boundary, body)
+    """
+    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------"
+    (body, crlf) = ("", "\r\n")
+    for key, value in args.items():
+        body += "--" + boundary + crlf
+        body += ('Content-disposition: form-data; name="%s"' % key) + crlf
+        body += crlf + str(value) + crlf
+    for key, filename in files.items():
+        body += "--" + boundary + crlf
+        body += (
+            'Content-Disposition: form-data; name="%s"; filename="%s"'
+            % (key, os.path.basename(filename))
+        ) + crlf
+        body += ("Content-Type: %s" % filetype(filename)) + crlf
+        body += crlf + open(filename, "r").read() + crlf
+    body += "--" + boundary + "--" + crlf + crlf
+    return ("multipart/form-data; boundary=" + boundary, body)
+
 
 def req_init(c, url, files):
-  """
+    """
     Format the arguments as multi-part/form-data, not the default
     application/x-www-form-url-encoded.  This improves the transfer of
     the large inputs and eases command line invocation of the CGI
     script.
-  """
-  c.url = url
-  c.setopt(c.URL, c.url)
-  c.setopt(c.POST, 1)
-  (type, body) = encode({}, files)
-  headers = []
-  headers.append('Content-type: %s' % type)
-  headers.append('Content-length: %s' % str(len(body)))
-  c.setopt(c.HTTPHEADER, headers)
-  body_IO = StringIO(body)
-  c.setopt(c.READFUNCTION, body_IO.read)
+    """
+    c.url = url
+    c.setopt(c.URL, c.url)
+    c.setopt(c.POST, 1)
+    (type, body) = encode({}, files)
+    headers = []
+    headers.append("Content-type: %s" % type)
+    headers.append("Content-length: %s" % str(len(body)))
+    c.setopt(c.HTTPHEADER, headers)
+    body_IO = StringIO(body)
+    c.setopt(c.READFUNCTION, body_IO.read)
+
 
 def req_done(c):
-  print c.buffer.getvalue()
+    print(c.buffer.getvalue())
+
 
 def req_error(c, task, errmsg, errno):
-  print "Error on task ", task
-  print errno, errmsg
-  sys.exit(1)
+    print("Error on task ", task)
+    print(errno, errmsg)
+    sys.exit(1)
+
 
 def upload(url, files):
-  reqman = RequestManager(ssl_opts = SSLOptions(),
-                          user_agent = IDENT,
-                          request_init = req_init,
-                          request_respond = req_done,
-                          request_error = req_error)
-  reqman.put((url + '/layout/put', files))
-  reqman.process()
-  return
+    reqman = RequestManager(
+        ssl_opts=SSLOptions(),
+        user_agent=IDENT,
+        request_init=req_init,
+        request_respond=req_done,
+        request_error=req_error,
+    )
+    reqman.put((url + "/layout/put", files))
+    reqman.process()
+    return
 
-print 'Start Uploading'
-upload(sys.argv[1],
-       { 'file': sys.argv[2] })
+
+print("Start Uploading")
+upload(sys.argv[1], {"file": sys.argv[2]})
 sys.exit(0)

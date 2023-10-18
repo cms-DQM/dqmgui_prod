@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, os.path, time, sys, argparse, subprocess
 from subprocess import Popen,PIPE
 from traceback import print_exc
 from datetime import datetime, timedelta
-from tempfile import mkstemp
 from glob import glob
 from fcntl import lockf, LOCK_EX, LOCK_UN
 from socket import getfqdn
@@ -67,7 +66,7 @@ if hostName.endswith(".cms"):
 # --------------------------------------------------------------------
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+  print(datetime.now(), procid, msg % args)
 
 # Order input files so we process them in a sane order:
 # - process .pb.dmqinfo files first
@@ -121,6 +120,8 @@ def orderFiles(a, b):
   if diff: return diff
   diff = a['version'] - b['version']
   if diff: return diff
+  def cmp(a, b):
+    return (a > b) - (a < b) 
   return cmp(b['dataset'], a['dataset'])
 
 # Checks if the file is the newest file by comparing the version
@@ -282,7 +283,7 @@ while True:
     # If the index doesn't exist yet, create it.
     if not os.path.exists(args.INDEX):
        os.system("visDQMIndex create %s" % args.INDEX)
-  except Exception, e:
+  except Exception as e:
     logme('error: %s', e)
     print_exc()
 
@@ -296,7 +297,7 @@ while True:
         else:
           sendIndexIntegrityErrorMessage()
         nextBackupTime = determineNextBackupTime(RSYNCINTERVAL)
-  except Exception, e:
+  except Exception as e:
     nextBackupTime = handleBackupException(e)
 
   try:
@@ -309,7 +310,8 @@ while True:
     for path in files:
       # Read in the file info.
       try:
-        info = eval(file(path).read())
+        with open(path) as _f:
+          info = eval(_f.read())
       except:
         continue
 
@@ -393,10 +395,10 @@ while True:
           os.remove(fname)
 
   # If anything bad happened, barf but keep going.
-  except KeyboardInterrupt, e:
+  except KeyboardInterrupt as e:
     sys.exit(0)
 
-  except Exception, e:
+  except Exception as e:
     logme('error: %s', e)
     print_exc()
 

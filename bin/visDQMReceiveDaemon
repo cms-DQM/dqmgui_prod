@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, os.path, time, sys, re, hashlib
 from traceback import print_exc
@@ -31,9 +31,12 @@ else:
   CHECKDIR = "%s/data/root" % CHECKDIR
 
 # --------------------------------------------------------------------
+def cmp(a, b):
+    return (a > b) - (a < b) 
+
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+  print(datetime.now(), procid, msg % args)
 
 def warnPath(info, path, msg):
   logme("%s: %s", path, msg)
@@ -112,7 +115,9 @@ def findNewFiles():
       path = "%s/%s" % (dir, f)
       origin = "%s.origin" % path
       try:
-        m = re.match(RXORIGIN, file(origin).read())
+        m = None
+        with open(origin) as _f:
+          m = re.match(RXORIGIN, _f.read())
         if not m:
           continue
         md5sum = m.group(1)
@@ -196,16 +201,18 @@ def finaliseOneFile(info):
   path = info['import']
 
   # Verify the MD5 checksum matches
-  curmd5 = hashlib.md5(file(path).read()).hexdigest()
+  with open(path) as _f:
+    curmd5 = hashlib.md5(_f.read()).hexdigest()
   if curmd5 != info['md5sum']:
     warnPath(info, path, "md5 checksum mismatch, expected [%s], found [%s]"
              % (info['md5sum'], curmd5))
     return False
 
   # Verify it's a ROOT file.
-  if file(path).read(5) != "root\0":
-    warnPath(info, path, "not a root file")
-    return False
+  with open(path) as _f:
+    if _f.read(5) != "root\0":
+      warnPath(info, path, "not a root file")
+      return False
 
   # Verify it's a properly structure ROOT file.
   checklevel = 'Loose'
@@ -392,10 +399,10 @@ while True:
       finaliseOneFile(info)
 
   # If anything bad happened, barf but keep going.
-  except KeyboardInterrupt, e:
+  except KeyboardInterrupt as e:
     sys.exit(0)
 
-  except Exception, e:
+  except Exception as e:
     logme('error: %s', e)
     print_exc()
 

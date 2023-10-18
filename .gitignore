@@ -29,3 +29,4 @@ __pycache__/
 *.x
 *.so
 .idea/
+settings.json

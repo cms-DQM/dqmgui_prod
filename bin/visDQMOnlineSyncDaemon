@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Usage: visDQMOnlineSyncDaemon [-s ONLINE-SERVER] [-n CONNECTIONS]
              [-d WAITTIME] DROPBOX FILEREPO NEXT
@@ -17,7 +17,7 @@ from Monitoring.Core.X509 import SSLOptions
 import os, os.path, sys, re, hashlib, pycurl, urllib
 from time import time, strptime, sleep
 from optparse import OptionParser
-from urlparse import urlparse
+from urllib import parse
 from calendar import timegm
 from datetime import datetime
 from traceback import print_exc
@@ -71,7 +71,7 @@ ncopied = 0
 def logme(msg, *args):
   """Generate agent log message."""
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+  print(datetime.now(), procid, msg % args)
 
 def myumask():
   """Get the current process umask."""
@@ -126,7 +126,7 @@ def request_init(c, options, kind, path, size, date):
       c.temp_path = tmp
       c.local_path = local_path
       c.buffer = None
-    except Exception, e:
+    except Exception as e:
       logme("ERROR: %s: %s", local_path, str(e))
       print_exc()
 
@@ -184,7 +184,7 @@ def process_task(c):
       c.temp_file = None
 
       if os.path.exists(c.local_path):
-	os.remove(c.local_path)
+        os.remove(c.local_path)
 
       os.chmod(c.temp_path, 0666 & ~UMASK)
       os.utime(c.temp_path, (date, date))
@@ -194,7 +194,7 @@ def process_task(c):
       c.local_path = None
       c.temp_path = None
       logme("INFO: downloaded %s", path)
-    except Exception, e:
+    except Exception as e:
       logme("ERROR: downloading %s into %s failed: %s",
             path, c.local_path, str(e))
       print_exc()
@@ -253,14 +253,14 @@ op.add_option("-d", dest = "delay",
               help = "Delay N seconds between iterations [default: %default]")
 options, args = op.parse_args()
 if len(args) < 2:
-  print >> sys.stderr, "Too few arguments"
+  sys.stderr.write("Too few arguments")
   sys.exit(1)
 if not options.server:
-  print >> sys.stderr, "Server contact string required"
+  sys.stderr.write("Server contact string required")
   sys.exit(1)
 
 UMASK = myumask()
-ROOT_URL = urlparse(options.server).path.rstrip('/')
+ROOT_URL = parse.urlparse(options.server).path.rstrip('/')
 DROPBOX = args[0]
 FILEREPO = args[1]
 NEXT = args[2:]
@@ -293,12 +293,12 @@ while True:
           nfetched, nfound, ncopied, end - start)
 
   # If anything bad happened, barf but keep going.
-  except KeyboardInterrupt, e:
+  except KeyboardInterrupt as e:
     logme("INFO: exiting")
     map(cleanup, reqman.handles)
     sys.exit(0)
 
-  except Exception, e:
+  except Exception as e:
     logme("ERROR: %s", e)
     print_exc()
 

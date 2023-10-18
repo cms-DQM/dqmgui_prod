@@ -1,16 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from stat import *
-from copy import deepcopy, copy
-from threading import Thread, Lock
+from copy import deepcopy
+from threading import Lock
 from Monitoring.DQM import Accelerator
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted, thousands, ParameterManager
-from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine, thread_data, log, url, tools
+from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo,  ParameterManager
+from cherrypy import expose, HTTPError, HTTPRedirect, tree, request, response, engine,  url, tools
 from cherrypy.lib.static import serve_file
 from cherrypy.lib import cptools, http
-from struct import pack, unpack
-from cStringIO import StringIO
-import os, re, time, socket, shutil, tempfile, cgi, cjson, hmac, hashlib
+from io import StringIO
+import os, re, time, socket, shutil, tempfile, cgi, json, hmac, hashlib
 
 DEF_DQM_PORT = 9090
 
@@ -199,9 +198,8 @@ class DQMFileAccess(DQMUpload):
       while True:
         dir = "%s/%04d" % (self.uploads, version)
         fname = "%s/%s" % (dir, file.filename)
-        if not os.path.exists(fname) and \
-	   not os.path.exists(fname + ".origin"):
-	  break
+        if not os.path.exists(fname) and not os.path.exists(fname + ".origin"):
+          break
         version += 1
 
       tmp = None
@@ -223,14 +221,14 @@ class DQMFileAccess(DQMUpload):
         data = file.file.read(8*1024*1024)
         if not data:
           break
-	if len(first) < 5:
-	  first += data[0:5]
+      if len(first) < 5:
+        first += data[0:5]
         os.write(fd, data)
         nsaved += len(data)
       os.close(fd)
       os.chmod(tmp, 0644)
       if first[0:5] != "root\0":
-	self._error(self.STATUS_ERROR_PARAMETER, "Not a ROOT file",
+        self._error(self.STATUS_ERROR_PARAMETER, "Not a ROOT file",
 		    "File data contents do not represent a ROOT file")
       if nsaved != size:
         self._error(self.STATUS_FAIL_EXECUTE,
@@ -240,7 +238,7 @@ class DQMFileAccess(DQMUpload):
       open(fname + ".origin", "w").write("%s %d %s\n" % (checksum, size, fname))
       self.lock.release()
 
-    except Exception, e:
+    except Exception as e:
       self.lock.release()
       if os.path.exists(fname):
         os.remove(fname)
@@ -281,7 +279,7 @@ class DQMFileAccess(DQMUpload):
 
     for x in path:
       if not re.match(RX_SAFE_PATH, x):
-	raise HTTPError(404, "Not found")
+        raise HTTPError(404, "Not found")
 
     # If no path was given, provide list of top level roots.
     if len(path) == 0:
@@ -395,18 +393,18 @@ class DQMLayoutAccess(DQMUpload):
         data = file.file.read(8*1024*1024)
         if not data:
           break
-	if len(first) < 5:
-	  first += data[0:5]
+      if len(first) < 5:
+        first += data[0:5]
         f.write(data)
         nsaved += len(data)
-      f.close()
+        f.close()
 
       # Reads in the uploaded JSON file that describes the layout,
       # decodes it as python dictionary.
-      layouts = cjson.decode((open(fname,'r').read()))
+      layouts = json.loads((open(fname,'r').read()))
       self.lock.release()
 
-    except Exception, e:
+    except Exception as e:
       self.lock.release()
       if os.path.exists(fname):
         os.remove(fname)
@@ -468,7 +466,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
       return result
     else:
       response.headers["Content-Type"] = "text/plain"
-      response.headers["Last-Modified"] = http.HTTPDate(server.stamp)
+      response.headers["Last-Modified"] = http.HTTPDate(self.server.stamp)
       return "{}"
 
 # --------------------------------------------------------------------
@@ -609,8 +607,7 @@ class DQMLayoutSource(Accelerator.DQMLayoutSource):
     Accelerator.DQMLayoutSource.__init__(self)
     d = statedir.replace('/dqmlayout', '')
     if os.path.exists("%s/layouts.json" % d):
-      Accelerator.DQMLayoutSource._pushLayouts \
-        (self, cjson.decode(open("%s/layouts.json" % d).read()))
+      Accelerator.DQMLayoutSource._pushLayouts(self, json.loads(open("%s/layouts.json" % d).read()))
 
 # --------------------------------------------------------------------
 # DQM data source providing content from DQM data delivered over
@@ -784,8 +781,8 @@ class DQMWorkspace:
     if not re.match(r"^[-+=_()/# A-Za-z0-9]*$", o):
       if o not in self.warnings:
         _logwarn("attempt to access unsafe object or version '%s'" % o)
-	self.warnings[o] = 1
-      raise HTTPError(500, "Attempt to access unsafe object")
+        self.warnings[o] = 1
+        raise HTTPError(500, "Attempt to access unsafe object")
     return o
 
   # Set session parameters, checking them for validity.
@@ -944,7 +941,7 @@ class DQMWorkspace:
           param['dataset'] = m.group(2)
           param['label']   = m.group(4) or ''
           param['ktest']   = m.group(5)
-	else:
+        else:
           raise HTTPError(500, "Incorrect referenceobj parameter")
 
     if striptype != None:

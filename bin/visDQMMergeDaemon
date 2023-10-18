@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, os.path, time, sys
 from traceback import print_exc
@@ -16,8 +16,9 @@ WAITTIME = 5		# Daemon cycle time.
 # --------------------------------------------------------------------
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
-
+  print(datetime.now(), procid, msg % args)
+def cmp(a, b):
+    return (a > b) - (a < b) 
 # Order input files so we process them in a sane order:
 # - descending by run
 # - ascending by version
@@ -45,9 +46,10 @@ while True:
     for path in glob("%s/*.root.dqminfo" % DROPBOX):
       # Read in the file info.
       try:
-	info = eval(file(path).read())
+        with open(path) as _f:
+          info = eval(_f.read())
       except:
-	continue
+        continue
 
       info['infofile'] = path
       new.append(info)
@@ -66,25 +68,26 @@ while True:
       while True:
         destname = info['mergepat'] % version
         destpath = "%s/%s" % (MERGEREPO, destname)
-	if not os.path.exists(destpath): break
-	version += 1
+        if not os.path.exists(destpath): break
+        version += 1
 
       if destpath not in merge:
-	merge[destpath] = { 'rank': len(merge), 'files': [], 'meta': [] }
-	merge[destpath]['info'] = dict((k, v) for k, v in info.iteritems()
+        merge[destpath] = { 'rank': len(merge), 'files': [], 'meta': [] }
+        merge[destpath]['info'] = dict((k, v) for k, v in info.iteritems()
 				       if k in ('class', 'version', 'runnr',
 						'dataset', 'release',
 						'subsystem', 'zippat', 'era',
 						'primds', 'procds', 'tier'))
         merge[destpath]['info']['infofile'] = "%s.dqminfo" % destpath
         merge[destpath]['info']['filepat'] = info['mergepat']
-	merge[destpath]['info']['path'] = destname
-	merge[destpath]['info']['version'] = version
-	if version > 1:
-	  oldfile = "%s/%s" % (MERGEREPO, info['mergepat'] % (version-1))
-	  oldinfo = eval(file("%s.dqminfo" % oldfile).read())
-	  merge[destpath]['files'].append(oldfile)
-	  merge[destpath]['meta'].append(oldinfo)
+        merge[destpath]['info']['path'] = destname
+        merge[destpath]['info']['version'] = version
+        if version > 1:
+          oldfile = "%s/%s" % (MERGEREPO, info['mergepat'] % (version-1))
+          with open("%s.dqminfo" % oldfile) as _f:
+            oldinfo = eval(_f.read())
+          merge[destpath]['files'].append(oldfile)
+          merge[destpath]['meta'].append(oldinfo)
 
       merge[destpath]['files'].append(fname)
       merge[destpath]['meta'].append(info)
@@ -101,7 +104,7 @@ while True:
 
       logme('creating %s from %d files' % (path, len(info['files'])))
       for f in info['files']:
-	logme('  %s' % f)
+        logme('  %s' % f)
 
       rc = os.system("exec perl -e 'alarm(300); exec qw(DQMMergeFile %s %s)'" % (path, files))
       if rc != 0:
@@ -139,14 +142,14 @@ while True:
         nfile = "%s/%s" % (n, minfo.rsplit("/", 1)[-1])
         if not os.path.exists(nfile):
           os.link(minfo, nfile)
-	for finfo in info['meta']:
-	  os.remove(finfo['infofile'])
+        for finfo in info['meta']:
+          os.remove(finfo['infofile'])
 
   # If anything bad happened, barf but keep going.
-  except KeyboardInterrupt, e:
+  except KeyboardInterrupt as e:
     sys.exit(0)
 
-  except Exception, e:
+  except Exception as e:
     logme('error: %s', e)
     print_exc()
 

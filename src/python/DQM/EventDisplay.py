@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from stat import *
 from copy import deepcopy, copy
@@ -110,7 +110,7 @@ class EVDSnapshotUpload:
       open(fname + ".info", "w").write(meta)
       self.lock.release()
 
-    except Exception, e:
+    except Exception as e:
       self.lock.release()
       if os.path.exists(fname):
         os.remove(fname)
@@ -171,7 +171,7 @@ class EVDSnapshotWorkspace:
     for dir, subdirs, files in os.walk(self.datadir):
       if re.match(r"^.*/\d\d.\d\d.\d\d\d\d$", dir):
         l = [f for f in files if f.startswith("screenShot-") and f.endswith(".png")]
-	date = ".".join(dir.rsplit("/", 1)[-1].split(".")[::-1])
+        date = ".".join(dir.rsplit("/", 1)[-1].split(".")[::-1])
         if len(l): available[date] = natsorted(l)
 
     dates = natsorted(available.keys())[::-1]

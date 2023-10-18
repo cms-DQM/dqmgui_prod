@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os, time, sys, re
 from traceback import print_exc
@@ -17,7 +17,7 @@ WAITTIME = 15 * 60             # Daemon cycle time.
 # --------------------------------------------------------------------
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+  print(datetime.now(), procid, msg % args)
 
 def current_umask():
   val = os.umask(0)
@@ -68,7 +68,7 @@ while True:
       except:
         continue
 
-    # If we found files to freeze, print a little diagnostic.
+    # If we found files to freeze, print(a little diagnostic.)
     if len(freeze):
       logme('found %d files.', len(freeze))
 
@@ -104,10 +104,10 @@ while True:
       os.remove(zf)
 
   # If anything bad happened, barf but keep going.
-  except KeyboardInterrupt, e:
+  except KeyboardInterrupt as e:
     sys.exit(0)
 
-  except Exception, e:
+  except Exception as e:
     logme('error: %s', e)
     print_exc()
   time.sleep(WAITTIME)

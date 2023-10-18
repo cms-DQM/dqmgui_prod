@@ -1,14 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import json
-import urllib2
-import SocketServer
-import SimpleHTTPServer
-from urllib import quote
+import socketserver
+import http.server
+from urllib import parse, request
 
 # Configurable parameters
-GUI_URL = 'http://localhost:8070/dqm/online-dev/'
+GUI_URL = "http://localhost:8070/dqm/online-dev/"
 PORT = 8031
 
 if len(sys.argv) > 1:
@@ -18,105 +17,129 @@ if len(sys.argv) > 2:
     PORT = int(sys.argv[2])
 
 # Constants
-ERRORS_FOLDER = 'data/json/live/1/Global/Online/ALL/00 Shift/Errors'
-STATUSES = { 30: 'OTHER', 50: 'DISABLED', 60: 'INVALID', 70: 'INSUF_STAT', 90: 'DID_NOT_RUN',
-    100: 'STATUS_OK', 200: 'WARNING', 300: 'ERROR'
+ERRORS_FOLDER = "data/json/live/1/Global/Online/ALL/00 Shift/Errors"
+STATUSES = {
+    30: "OTHER",
+    50: "DISABLED",
+    60: "INVALID",
+    70: "INSUF_STAT",
+    90: "DID_NOT_RUN",
+    100: "STATUS_OK",
+    200: "WARNING",
+    300: "ERROR",
 }
 
 # Dict with keys of disabled ME names
 DISABLED_MES = {}
 
+
 def start():
-    SocketServer.TCPServer.allow_reuse_address = True
-    server = SocketServer.TCPServer(('0.0.0.0', PORT), CustomRequestHandler)
+    socketserver.TCPServer.allow_reuse_address = True
+    server = socketserver.TCPServer(("0.0.0.0", PORT), CustomRequestHandler)
     try:
         server.serve_forever()
     except:
         pass
     server.shutdown()
 
-class CustomRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+class CustomRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-
         # Return the main table
-        if self.path == '/':
+        if self.path == "/":
             state = self.get_gui_data()
-            content = ''
+            content = ""
 
-            for index, item in enumerate(state['contents']):
-                if 'obj' in item:
-                    me = item['path']
-                    content += '<tr>'
-                    content += '    <td>%s</td>' % me
-                    content += '    <td>%s</td>' % ', '.join(str(x['name']) for x in item['qresults'])
-                    content += '    <td>%s</td>' % ', '.join(str(x['algorithm']) for x in item['qresults'])
-                    content += '    <td>%s</td>' % ', '.join(str(x['message']) for x in item['qresults'])
-                    content += '    <td>%s</td>' % ', '.join(str(STATUSES.get(x['status'], x['status'])) for x in item['qresults'])
-                    content += '    <td>%s</td>' % ', '.join(str(x['result']) for x in item['qresults'])
+            for index, item in enumerate(state["contents"]):
+                if "obj" in item:
+                    me = item["path"]
+                    content += "<tr>"
+                    content += "    <td>%s</td>" % me
+                    content += "    <td>%s</td>" % ", ".join(
+                        str(x["name"]) for x in item["qresults"]
+                    )
+                    content += "    <td>%s</td>" % ", ".join(
+                        str(x["algorithm"]) for x in item["qresults"]
+                    )
+                    content += "    <td>%s</td>" % ", ".join(
+                        str(x["message"]) for x in item["qresults"]
+                    )
+                    content += "    <td>%s</td>" % ", ".join(
+                        str(STATUSES.get(x["status"], x["status"]))
+                        for x in item["qresults"]
+                    )
+                    content += "    <td>%s</td>" % ", ".join(
+                        str(x["result"]) for x in item["qresults"]
+                    )
 
                     if me in DISABLED_MES:
                         content += '    <td class="danger">No</td>'
-                        content += '    <td><button onclick="enable(\'%s\')">Enable</button></td>' % me
+                        content += (
+                            "    <td><button onclick=\"enable('%s')\">Enable</button></td>"
+                            % me
+                        )
                     else:
                         content += '    <td class="success">Yes</td>'
-                        content += '    <td><button onclick="disable(\'%s\')">Disable</button></td>' % me
+                        content += (
+                            "    <td><button onclick=\"disable('%s')\">Disable</button></td>"
+                            % me
+                        )
 
-                    content += '</tr>'
-                    
+                    content += "</tr>"
+
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(TEMPLATE.replace('$CONTENT$', content))
-        
+            self.wfile.write(TEMPLATE.replace("$CONTENT$", content))
+
         # Return all enabled MEs
-        elif self.path == '/disabled':
+        elif self.path == "/disabled":
             result = []
             for me in DISABLED_MES:
                 if DISABLED_MES[me]:
                     result.append(me)
-            
+
             self.send_response(200)
             self.end_headers()
             self.wfile.write(json.dumps(result))
-        
+
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write('<h1>404 Not Found</h1>')
+            self.wfile.write("<h1>404 Not Found</h1>")
 
     def do_POST(self):
         # Enable given ME
-        if self.path.startswith('/enable?me='):
-            me = self.path.split('/enable?me=', 1)[1]
+        if self.path.startswith("/enable?me="):
+            me = self.path.split("/enable?me=", 1)[1]
             DISABLED_MES.pop(me, None)
             self.send_response(200)
             self.end_headers()
             self.wfile.write(me)
 
         # Disable given ME
-        elif self.path.startswith('/disable?me='):
-            me = self.path.split('/disable?me=', 1)[1]
+        elif self.path.startswith("/disable?me="):
+            me = self.path.split("/disable?me=", 1)[1]
             DISABLED_MES[me] = True
             self.send_response(200)
             self.end_headers()
             self.wfile.write(me)
-        
+
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write('<h1>404 Not Found</h1>')
+            self.wfile.write("<h1>404 Not Found</h1>")
 
     def do_HEAD(self):
         self.send_response(501)
         self.end_headers()
-        self.wfile.write('<h1>501 Unsupported method</h1>')
-
+        self.wfile.write("<h1>501 Unsupported method</h1>")
 
     def get_gui_data(self):
-        url = '%s%s' % (GUI_URL, quote(ERRORS_FOLDER))
+        url = "%s%s" % (GUI_URL, parse.quote(ERRORS_FOLDER))
 
         try:
-            datareq = urllib2.Request(url)
-            result = urllib2.build_opener(urllib2.ProxyHandler({})).open(datareq)
+            datareq = request.Request(url)
+            result = request.build_opener(request.ProxyHandler({})).open(datareq)
             state = result.read()
         except:
             return json.loads('{"contents": [{ "streamerinfo": "" }]}')
@@ -126,7 +149,7 @@ class CustomRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return state
 
 
-TEMPLATE = '''
+TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 
@@ -213,8 +236,8 @@ TEMPLATE = '''
 </body>
 
 </html>
-'''
+"""
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     start()

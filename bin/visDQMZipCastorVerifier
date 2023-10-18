@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import os, time, sys, smtplib, pickle
-from email.MIMEText import MIMEText
+import os, time, sys, pickle
 from datetime import datetime
 from glob import glob
 from math import sqrt
@@ -40,7 +39,7 @@ STATE_PICKLE_FILENAME = "state.pickle"
 # --------------------------------------------------------------------
 def logme(msg, *args):
   procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-  print datetime.now(), procid, msg % args
+  print(datetime.now(), procid, msg % args)
 
 def runme(cmd, *args, **keys):
   try:
@@ -50,7 +49,7 @@ def runme(cmd, *args, **keys):
     retcodes = "retcodes" in keys and keys["retcodes"] or (0, )
     assert scall.returncode in retcodes
 
-  except AssertionError, e:
+  except AssertionError as e:
     logme("ERROR: Command execution failed ('%s') with error message: %s",
                 fcmd, sc_stderr.replace('\n',"\016"))
 
@@ -165,7 +164,8 @@ try:
     else:
       # Read zinfo file
       try:
-        info = eval(file(zf).read())
+        with open(zf ) as _f:
+          info = eval(_f.read())
       except:
         continue
 
@@ -223,7 +223,7 @@ try:
         os.remove(f)
       del new[f]
 
-    except AssertionError, e:
+    except AssertionError as e:
       info['process'] = False
       msg = str(e)
       WARNINGS[msg] = WARNINGS.setdefault(msg, 0) + 1
@@ -231,10 +231,10 @@ try:
       continue
 
 # If anything bad happened, barf but keep going.
-except KeyboardInterrupt, e:
+except KeyboardInterrupt as e:
   sys.exit(0)
 
-except Exception, e:
+except Exception as e:
   logme('ERROR: %s', e)
   print_exc()
 
