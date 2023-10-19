@@ -136,7 +136,9 @@ def build(plugin):
         ]
         sys.stdout.write("(Re)building plug-in %s\n" % plugin["name"])
         sys.stdout.write(
-            "+ " + " ".join([x.encode("string_escape") for x in cmd]) + "\n"
+            "+ "
+            + " ".join([x.encode("unicode_escape").decode("utf-8") for x in cmd])
+            + "\n"
         )
         sys.stdout.flush()
         if not os.path.exists(plugin["dir"]):

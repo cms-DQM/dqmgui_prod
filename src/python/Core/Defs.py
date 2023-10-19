@@ -92,7 +92,7 @@ class ServerDef:
                     "%s:%s: warning: glob pattern did not match any files" % (name, pat)
                 )
             p["sources"].extend([dict(path=f) for f in l])
-        p["sources"].sort()
+        p["sources"].sort(key=lambda x: x["path"])
 
         # Gather source finger print information.
         for f in p["sources"]:
@@ -106,7 +106,7 @@ class ServerDef:
             f["mtime"] = s.st_mtime
             f["size"] = s.st_size
             with open(path, "r") as _f:
-                f["cksum"] = hashlib.md5(_f.read()).hexdigest()
+                f["cksum"] = hashlib.md5(_f.read().encode()).hexdigest()
 
         # Create plug-in finger print and a path to the binary to load.
         p["data"] = "\n".join(
@@ -115,7 +115,7 @@ class ServerDef:
                 for f in p["sources"]
             ]
         )
-        p["id"] = hashlib.md5(p["data"]).hexdigest()
+        p["id"] = hashlib.md5(p["data"].encode()).hexdigest()
         p["dir"] = "%s/%s" % (self.serverDir, p["name"])
         p["binary"] = "%s/%s.ext" % (p["dir"], p["id"])
 
