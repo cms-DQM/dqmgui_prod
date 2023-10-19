@@ -263,5 +263,5 @@ setup(
     cmdclass={"build_system": BuildCommand, "install_system": InstallCommand},
     package_dir={"Monitoring": "src/python"},
     requires=["requests"],
-    packages=["Monitoring"],
+    packages=["Monitoring", "Monitoring.Core", "Monitoring.DQM", "Monitoring.Overview"],
 )
