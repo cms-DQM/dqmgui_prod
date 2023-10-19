@@ -21,7 +21,7 @@
 
 from glob import glob
 from signal import *
-import sys, os, os.path, time, socket, re
+import sys, os, os.path, time, re
 from Monitoring.Core.Defs import ServerDef
 
 DISTDIR = os.path.normcase(os.path.abspath(__file__)).rsplit("/", 2)[0]

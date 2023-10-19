@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, time, sys, shutil
+import os, time, sys
 from glob import glob
 from datetime import datetime
 from traceback import print_exc

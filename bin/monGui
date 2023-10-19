@@ -3,7 +3,7 @@
 # Fork a child and keep restarting it if it dies of a signal.
 from Monitoring.Core.GUI import Server
 from Monitoring.Core.Defs import ServerDef
-import sys, os, os.path, subprocess
+import sys, os, os.path
 import cherrypy, logging, threading, time, socket
 from cherrypy._cplogging import LogManager
 from cherrypy.lib import profiler

@@ -14,7 +14,7 @@ be set correctly for authentication.
 
 from Monitoring.Core.HTTP import RequestManager
 from Monitoring.Core.X509 import SSLOptions
-import os, os.path, sys, re, hashlib, pycurl, urllib
+import os, os.path, sys, re, pycurl, urllib
 from time import time, strptime, sleep
 from optparse import OptionParser
 from urllib import parse

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import re, os, time, sys, json
+import re, os, time, sys
 from traceback import print_exc
 from datetime import datetime
 from urllib import request
