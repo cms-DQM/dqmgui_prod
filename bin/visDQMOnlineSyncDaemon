@@ -186,7 +186,7 @@ def process_task(c):
       if os.path.exists(c.local_path):
         os.remove(c.local_path)
 
-      os.chmod(c.temp_path, 0666 & ~UMASK)
+      os.chmod(c.temp_path, 0o666 & ~UMASK)
       os.utime(c.temp_path, (date, date))
       os.rename(c.temp_path, c.local_path)
 
