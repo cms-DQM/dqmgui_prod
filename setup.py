@@ -98,7 +98,7 @@ def define_the_build(self, dist, system_name, run_make=True, patch_x=""):
     # as we have a makefile to build all the rest above anyway. Any c++
     # products we built go into data_files as python just needs to copy them.
     # Headers get special handling, we map them automatically to directories.
-    py_version = (string.split(sys.version))[0]
+    py_version = sys.version.split()[0]
     pylibdir = "%slib/python%s/site-packages" % (patch_x, py_version[0:3])
     dist.py_modules = ["Monitoring.__init__"]
     dist.packages = system["python"]
