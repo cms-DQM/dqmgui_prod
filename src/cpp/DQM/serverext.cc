@@ -8,7 +8,8 @@
 #endif
 #define VISDQM_NO_ROOT 1
 #define DEBUG(n, x)
-
+#define png_infopp_NULL (png_infopp) NULL
+#define int_p_NULL (int *)NULL
 #include "DQM/DQMNet.h"
 #include "DQM/NatSort.h"
 #include "DQM/Objects.h"
