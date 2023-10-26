@@ -29,7 +29,7 @@ if err != None:
 # Redirect all output to the logging daemon.
 with open("/dev/null", "w") as devnull:
     logger = Popen(
-        ["rotatelogs", cfg.logFile, "86400"],
+        ["logrotate", cfg.logFile, "86400"],
         stdin=PIPE,
         stdout=devnull,
         stderr=devnull,
