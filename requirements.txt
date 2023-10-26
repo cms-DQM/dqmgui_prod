@@ -3,4 +3,5 @@ pycurl
 numpy
 matplotlib
 pillow
+Cheetah3
 . # Also install dqmgui itself
