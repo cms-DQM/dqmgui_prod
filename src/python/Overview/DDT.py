@@ -6,7 +6,7 @@ from urllib import request
 
 def graphlnk(base, **kwargs):
     return ("http://cmsweb.cern.ch/phedex/graphs/%s?" % base) + "&".join(
-        "%s=%s" % (k, quote_plus(v, "/")) for k, v in sorted(kwargs.iteritems())
+        "%s=%s" % (k, quote_plus(v, "/")) for k, v in sorted(kwargs.items())
     )
 
 

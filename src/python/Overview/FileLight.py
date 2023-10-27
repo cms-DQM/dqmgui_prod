@@ -25,7 +25,7 @@ class FileLightWorkspace(CompWorkspace):
             return json.dumps(result)
 
         def initialiseSession(self, session, *args, **kwargs):
-            for key, value in self.viewdef.iteritems():
+            for key, value in self.viewdef.items():
                 if key not in session:
                     session["filelight.%s.%s" % (self.label, key)] = copy(value)
 

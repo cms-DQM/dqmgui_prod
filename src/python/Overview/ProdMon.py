@@ -90,7 +90,7 @@ class ProdMonWorkspace(CompWorkspace):
             return json.dumps(result)
 
         def initialiseSession(self, session, *args, **kwargs):
-            for key, value in self.viewdef.iteritems():
+            for key, value in self.viewdef.items():
                 if key not in session:
                     session[key] = deepcopy(value)
             current_plot = session["prodmon.plot.open"][session["prodmon.plot.current"]]

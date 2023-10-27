@@ -101,7 +101,7 @@ class SessionThread(Thread):
             save = self._save
             self._save = {}
             self._lock.release()
-            for name, data in save.iteritems():
+            for name, data in save.items():
                 path = self._path + "/" + name
                 tmppath = path + ".tmp"
                 with open(tmppath, "w") as _f:
@@ -272,7 +272,7 @@ class Server:
 
         self._addJSFragment("%s/javascript/Core/End.js" % self.contentpath)
         self._addChecksum(None, cfgfile, open(cfgfile).read())
-        for name, m in sys.modules.iteritems():
+        for name, m in sys.modules.items():
             if (
                 (
                     (
@@ -317,7 +317,11 @@ class Server:
                 "srcname": file.rsplit("/", 1)[-1],
                 "mtime": (s and s[ST_MTIME]) or -1,
                 "srclen": (s and s[ST_SIZE]) or -1,
-                "srcmd5": hashlib.md5(data).digest().encode("hex"),
+                "srcmd5": hashlib.md5(
+                    data.encode("utf-8") if isinstance(data, str) else data
+                )
+                .digest()
+                .hex(),
             }
         )
 
@@ -463,7 +467,7 @@ class Server:
         # not been used for 15 minutes, to avoid building up memory use.
         self.lock.acquire()
         old = time.time() - 900
-        for key in [k for k, s in self.sessions.iteritems() if s["core.stamp"] < old]:
+        for key in [k for k, s in self.sessions.items() if s["core.stamp"] < old]:
             del self.sessions[key]
         self.lock.release()
 

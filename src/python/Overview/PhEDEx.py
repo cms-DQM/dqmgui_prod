@@ -99,7 +99,7 @@ class PhEDExSource:
 
     def _queryPruneCache(self, db):
         now = time.time()
-        for label, cache in db["cache"].iteritems():
+        for label, cache in db["cache"].items():
             for old in [q for q in cache if cache[q]["valid"] < now]:
                 del cache[old]
 
@@ -592,7 +592,7 @@ class PhEDExSource:
                 if namegroup in self.db:
                     instances[namegroup] = self.db[namegroup]
                 else:
-                    for x, db in self.db.iteritems():
+                    for x, db in self.db.items():
                         if db["def"]["class"] == namegroup:
                             instances[x] = db
 
@@ -674,7 +674,7 @@ class PhEDExSource:
         # to the cache with a lock, and also lock the individual cache
         # entry so that concurrent accesses will access the same data.
         self.lock.acquire()
-        for old in [k for k, v in self.imgcache.iteritems() if v["valid"] < now]:
+        for old in [k for k, v in self.imgcache.items() if v["valid"] < now]:
             del self.imgcache[old]
         if imgkey not in self.imgcache:
             cached = self.imgcache[imgkey] = {"lock": Lock(), "valid": 0}
@@ -694,7 +694,7 @@ class PhEDExSource:
                 for x, r in zip(data, rawdata):
                     x.update(
                         (key, float(val[0]) / 2**40)
-                        for key, val in r.iteritems()
+                        for key, val in r.items()
                         if val[0] > 0
                     )
 
@@ -727,7 +727,7 @@ class PhEDExSource:
                     mbps = 1.0 / (2**20 * (t[1] - t[0]))
                     x.update(
                         (key, float(val[0]) * mbps)
-                        for key, val in r.iteritems()
+                        for key, val in r.items()
                         if val[0] > 0
                     )
 
@@ -757,7 +757,7 @@ class PhEDExSource:
                 (d, series, rawdata) = self._linkData(instances, attrs)
                 sumdata = {}
                 for r in rawdata:
-                    for key, val in r.iteritems():
+                    for key, val in r.items():
                         if key not in sumdata:
                             sumdata[key] = val
                         else:
@@ -765,7 +765,7 @@ class PhEDExSource:
 
                 data = {}
                 mbps = 1.0 / (2**20 * (series[-1][1] - series[0][0]))
-                for key, val in sumdata.iteritems():
+                for key, val in sumdata.items():
                     if val[1]:
                         rate = float(val[0]) * mbps
                         qval = val[1] / (val[1] + val[2])
@@ -818,7 +818,7 @@ class PhEDExSource:
                 table = dict((r1, dict((r2, 0.0) for r2 in regions)) for r1 in regions)
                 mbps = 1.0 / (2**20 * (series[-1][1] - series[0][0]))
                 for r in rawdata:
-                    for key, val in r.iteritems():
+                    for key, val in r.items():
                         table[key[0]][key[1]] += val[0] * mbps
 
                 info = "({ regions: %s, table: %s })" % (repr(regions), repr(table))
@@ -854,7 +854,7 @@ class PhEDExSource:
                 hmin = hmax = 0
                 data = {}
                 for r in rawdata:
-                    for key, blocks in r.iteritems():
+                    for key, blocks in r.items():
                         if key not in data:
                             data[key] = {}
                         for b in blocks:
@@ -889,7 +889,7 @@ class PhEDExSource:
                         return hmin + bin * hstep
 
                 for r in rawdata:
-                    for key, blocks in r.iteritems():
+                    for key, blocks in r.items():
                         for b in blocks:
                             if b[2] < hmin or b[2] > hmax:
                                 continue

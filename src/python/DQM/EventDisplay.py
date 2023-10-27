@@ -270,7 +270,7 @@ class EVDSnapshotWorkspace:
             session["evd.page"] = page
 
     def initialiseSession(self, session):
-        for var, value in self.sessiondef.iteritems():
+        for var, value in self.sessiondef.items():
             if var not in session:
                 session[var] = deepcopy(value)
 

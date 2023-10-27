@@ -86,7 +86,7 @@ while True:
                 merge[destpath] = {"rank": len(merge), "files": [], "meta": []}
                 merge[destpath]["info"] = dict(
                     (k, v)
-                    for k, v in info.iteritems()
+                    for k, v in info.items()
                     if k
                     in (
                         "class",
@@ -121,7 +121,7 @@ while True:
         # Note that if the file already exists in the archive, it will be
         # replaced, which is perfectly ok with us.
         for path, info in sorted(
-            merge.iteritems(), lambda a, b: a[1]["rank"] - b[1]["rank"]
+            merge.items(), lambda a, b: a[1]["rank"] - b[1]["rank"]
         ):
             files = " ".join(info["files"])
             dir = path.rsplit("/", 1)[0]

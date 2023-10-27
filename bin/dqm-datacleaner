@@ -167,7 +167,7 @@ for root, sub_folders, files in os.walk(SCAN_PATH):
                 sys.stdout.flush()
 
 # Print statistics dictionary:
-for sub_folder, stats in sorted(statistics_dict.iteritems()):
+for sub_folder, stats in sorted(statistics_dict.items()):
     print("Subfolder %s" % sub_folder)
     print(stats)
 print("---")

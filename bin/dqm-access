@@ -264,7 +264,7 @@ def process(c):
                     newreq[newpath] = []
                 newreq[newpath].append((filters, newpos))
 
-    for path, filterspec in newreq.iteritems():
+    for path, filterspec in newreq.items():
         reqman.put((options, sample, path, filterspec))
 
 

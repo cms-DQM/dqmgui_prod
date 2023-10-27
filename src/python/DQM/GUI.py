@@ -17,7 +17,7 @@ from cherrypy import (
     tools,
 )
 from cherrypy.lib.static import serve_file
-from cherrypy.lib import cptools, http
+from cherrypy.lib import cptools, httputil
 import os, re, time, socket, shutil, tempfile, cgi, json, hmac, hashlib
 
 DEF_DQM_PORT = 9090
@@ -91,7 +91,7 @@ class DQMUpload:
             raise HTTPRedirect(url(pi + "/", request.query_string))
         request.is_index = True
         response.headers["Content-Type"] = "text/html"
-        response.headers["Last-Modified"] = http.HTTPDate(time)
+        response.headers["Last-Modified"] = httputil.HTTPDate(time)
         cptools.validate_since()
 
     def _check_authentication(self):
@@ -533,7 +533,7 @@ class DQMToJSON(Accelerator.DQMToJSON):
         )
         (stamp, result) = self._samples(sources.values(), options)
         response.headers["Content-Type"] = "text/plain"
-        response.headers["Last-Modified"] = http.HTTPDate(stamp)
+        response.headers["Last-Modified"] = httputil.HTTPDate(stamp)
         return result
 
     @expose
@@ -556,11 +556,11 @@ class DQMToJSON(Accelerator.DQMToJSON):
                 options,
             )
             response.headers["Content-Type"] = "text/plain"
-            response.headers["Last-Modified"] = http.HTTPDate(stamp)
+            response.headers["Last-Modified"] = httputil.HTTPDate(stamp)
             return result
         else:
             response.headers["Content-Type"] = "text/plain"
-            response.headers["Last-Modified"] = http.HTTPDate(self.server.stamp)
+            response.headers["Last-Modified"] = httputil.HTTPDate(self.server.stamp)
             return "{}"
 
 
@@ -917,7 +917,7 @@ class DQMWorkspace:
 
     # Initialise a new session.
     def initialiseSession(self, session):
-        for var, value in self.sessiondef.iteritems():
+        for var, value in self.sessiondef.items():
             if var not in session:
                 session[var] = deepcopy(value)
 

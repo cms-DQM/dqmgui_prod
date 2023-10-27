@@ -8,7 +8,7 @@ from copy import deepcopy
 
 def mklnk(baseurl, **kwargs):
     return baseurl + "&".join(
-        "%s=%s" % (k, quote_plus(str(v), "/")) for k, v in sorted(kwargs.iteritems())
+        "%s=%s" % (k, quote_plus(str(v), "/")) for k, v in sorted(kwargs.items())
     )
 
 
@@ -109,7 +109,7 @@ class CompWorkspace:
             session["comp.menu"] = "none"
 
         if getattr(self, "sessiondef", None):
-            for key, value in self.sessiondef.iteritems():
+            for key, value in self.sessiondef.items():
                 if key not in session:
                     session[key] = deepcopy(value)
 
@@ -312,7 +312,7 @@ class WebImageScraper(Thread):
 
                 imgdata = {}
                 imgurl = None
-                for name, url in imgrefs.iteritems():
+                for name, url in imgrefs.items():
                     try:
                         imgurl = parse.urljoin(s["html"], url)
                         img = request.urlopen(imgurl)
@@ -329,7 +329,7 @@ class WebImageScraper(Thread):
                         imgdata[name] = None
 
                 self.lock.acquire()
-                for name, info in imgdata.iteritems():
+                for name, info in imgdata.items():
                     self.images[name] = info
                 self.lock.release()
 

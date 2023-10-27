@@ -42,11 +42,11 @@ class UploadTest(helper.CPWebCase):
     def _encode(self, args, files, with_length):
         body, crlf = "", "\r\n"
         boundary = "TEST"
-        for key, value in args.iteritems():
+        for key, value in args.items():
             body += "--" + boundary + crlf
             body += ('Content-Disposition: form-data; name="%s"' % key) + crlf
             body += crlf + str(value) + crlf
-        for key, file in files.iteritems():
+        for key, file in files.items():
             filename, filedata = file
             body += "--" + boundary + crlf
             body += (

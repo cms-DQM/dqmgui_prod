@@ -304,9 +304,9 @@ class Chart:
             "sort": False,  # sort items and legend entries by value
             "max_legend": 100,  # maximum items in the legend
         }
-        for k, v in subdefaults.iteritems():
+        for k, v in subdefaults.items():
             self.props[k] = v
-        for k, v in props.iteritems():
+        for k, v in props.items():
             self.props[k] = v
 
         self.font = FontProperties()
@@ -1604,7 +1604,7 @@ class LatencyDensityMap(Chart):
             item = self.keys[i]
             d = self._data[item["key"]]
             hmin = hmax = None
-            for hbin, n in d.iteritems():
+            for hbin, n in d.items():
                 c[hbin, i] = n
                 if hmin == None:
                     hmin = valuef(hbin)

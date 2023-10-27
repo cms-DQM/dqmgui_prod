@@ -127,7 +127,7 @@ while True:
         # single zip in a single operation to avoid excessive rewrites.
         # Note that if the file already exists in the archive, it will be
         # replaced, which is perfectly ok with us.
-        for zippath, info in zips.iteritems():
+        for zippath, info in zips.items():
             if not len(info["files"]):
                 continue
             zipfiles = " ".join((x[0] for x in info["files"]))
