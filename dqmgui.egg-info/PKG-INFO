@@ -1,0 +1,5 @@
+Metadata-Version: 2.1
+Name: dqmgui
+Version: 1.0
+Maintainer-email: hn-cms-dqmDevel@cern.ch
+Requires: requests
