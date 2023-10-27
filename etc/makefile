@@ -5,7 +5,7 @@ SRCDIR       = .
 CXX          = c++
 LDFLAGS_Darwin = -mmacosx-version-min=10.6
 LDFLAGS_Linux  = -Wl,-z,defs
-LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(patsubst %,-L%,$(LIBRARY_DIRS)) $(shell python3-config --ldflags)
+LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(patsubst %,-L%,$(LIBRARY_DIRS)) $(shell python3-config --ldflags) -Wl,--as-needed
 
 CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
 	       -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
