@@ -283,7 +283,7 @@ class Server:
                     or name == "__main__"
                 )
                 and m
-                and m.__dict__.has_key("__file__")
+                and "__file__" in m.__dict__
             ):
                 processed = False
                 # Check if the module is a binary module, since this needs a
@@ -351,7 +351,7 @@ class Server:
 
     def _addCSSFragment(self, filename):
         """Add a piece of CSS to the master HTML page."""
-        if not dict(self.css).has_key(filename):
+        if not filename in dict(self.css):
             with open(filename) as _f:
                 text = _f.read()
             if filename.startswith(self._yui):
@@ -395,7 +395,7 @@ class Server:
 
     def _addJSFragment(self, filename, minimise=True):
         """Add a piece of javascript to the master HTML page."""
-        if not dict(self.js).has_key(filename):
+        if not filename in dict(self.js):
             with open(filename) as _f:
                 text = _f.read()
             if minimise:
