@@ -26,22 +26,23 @@ if err != None:
     sys.stderr.write(err)
     sys.exit(1)
 
+# TODO: Make it work without rotatelogs
 # Redirect all output to the logging daemon.
-with open("/dev/null", "w") as devnull:
-    logger = Popen(
-        ["logrotate", cfg.logFile, "86400"],
-        stdin=PIPE,
-        stdout=devnull,
-        stderr=devnull,
-        bufsize=1,
-        close_fds=True,
-        shell=False,
-    )
-    os.dup2(logger.stdin.fileno(), sys.stdout.fileno())
-    os.dup2(logger.stdin.fileno(), sys.stderr.fileno())
-    os.dup2(devnull.fileno(), sys.stdin.fileno())
-    logger.stdin.close()
-    devnull.close()
+# with open("/dev/null", "w") as devnull:
+#     logger = Popen(
+#         ["logrotate", cfg.logFile, "86400"],
+#         stdin=PIPE,
+#         stdout=devnull,
+#         stderr=devnull,
+#         bufsize=1,
+#         close_fds=True,
+#         shell=False,
+#     )
+#     os.dup2(logger.stdin.fileno(), sys.stdout.fileno())
+#     os.dup2(logger.stdin.fileno(), sys.stderr.fileno())
+#     os.dup2(devnull.fileno(), sys.stdin.fileno())
+#     logger.stdin.close()
+#     devnull.close()
 
 # Fork.  The child always exits the loop and executes the code below
 # to run the server proper.  The parent monitors the child, and if

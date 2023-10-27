@@ -240,7 +240,7 @@ class Server:
                     open(filename).read(),
                 ]
 
-        self._yui = os.getenv("YUI_ROOT") + "/build"
+        self._yui = os.path.join(os.getenv("YUI_ROOT"), "build")
         self._extjs = os.getenv("EXTJS_ROOT")
         self._d3 = os.getenv("D3_ROOT")
         self._jsroot = os.getenv("ROOTJS_ROOT")
