@@ -104,7 +104,7 @@ class SessionThread(Thread):
             for name, data in save.items():
                 path = self._path + "/" + name
                 tmppath = path + ".tmp"
-                pickle.dump(data.encode("utf-8"), open(tmppath, "wb"))
+                pickle.dump(data, open(tmppath, "wb"))
 
                 try:
                     os.remove(path)
