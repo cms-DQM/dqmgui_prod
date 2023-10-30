@@ -179,10 +179,11 @@ class ParameterManager(Tool):
 
         for k in req.params.keys():
             is_unicode = True
-            try:
-                req.params[k].decode()
-            except UnicodeError:
-                is_unicode = False
+            if isinstance(req.params[k], bytes):
+                try:
+                    req.params[k].decode()
+                except UnicodeError:
+                    is_unicode = False
             if is_unicode:
                 try:
                     req.params[k] = str(req.params[k])
