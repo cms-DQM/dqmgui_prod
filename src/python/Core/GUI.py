@@ -34,7 +34,7 @@ _SESSION_REDIRECT = (
 
 def extension(modules, what, *args):
     for m in modules:
-        ctor = getattr(m, what, None)
+        ctor = getattr(import_module(m), what, None)
         if ctor:
             return ctor(*args)
     _logwarn("extension '%s' not found" % what)
@@ -104,8 +104,7 @@ class SessionThread(Thread):
             for name, data in save.items():
                 path = self._path + "/" + name
                 tmppath = path + ".tmp"
-                with open(tmppath, "w") as _f:
-                    pickle.dump(data, _f)
+                pickle.dump(data.encode("utf-8"), open(tmppath, "wb"))
 
                 try:
                     os.remove(path)
@@ -208,7 +207,9 @@ class Server:
        Server integrity check of source files."""
 
     def __init__(self, cfgfile, cfg, modules):
-        modules = map(import_module, modules)
+        # Don't use a map, because we want to iterate over
+        # the modules many times
+        # modules = map(import_module, modules)
         self.instrument = cfg.instrument
         self.checksums = []
         self.stamp = time.time()
@@ -427,8 +428,7 @@ class Server:
                 path = "%s/%s" % (self.sessiondir, name)
                 if os.path.exists(path):
                     try:
-                        with open(path, "r") as _f:
-                            self.sessions[name] = pickle.load(_f)
+                        self.sessions[name] = pickle.load(open(path, "rb"))
                     except Exception as e:
                         _logerr("FAILURE: cannot load session data: " + str(e))
 

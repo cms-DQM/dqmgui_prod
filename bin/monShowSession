@@ -4,7 +4,6 @@ import sys, pickle
 
 for f in sys.argv[1:]:
     print("%s:" % f)
-    with open(f, "r") as _f:
-        data = pickle.load(_f)
-        for k in sorted(data.keys()):
-            print("  %-15s %s" % (k, repr(data[k])))
+    data = pickle.load(open(f, "rb"))
+    for k in sorted(data.keys()):
+        print("  %-15s %s" % (k, repr(data[k])))
