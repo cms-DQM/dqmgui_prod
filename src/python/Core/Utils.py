@@ -1,5 +1,6 @@
 import re, time, calendar, logging
-from cherrypy import log, Tool, tools, request
+from cherrypy import log, Tool, request
+from cherrypy._cpreqbody import Part
 
 RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
 RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
@@ -178,10 +179,13 @@ class ParameterManager(Tool):
         ## them is happy.
 
         for k in req.params.keys():
+            # Don't convert Multipart data.
+            if isinstance(req.params[k], Part):
+                continue
             is_unicode = True
             if isinstance(req.params[k], bytes):
                 try:
-                    req.params[k].decode()
+                    req.params[k].decode("utf-8")
                 except UnicodeError:
                     is_unicode = False
             if is_unicode:

@@ -255,18 +255,18 @@ class DQMFileAccess(DQMUpload):
                 os.makedirs(dir)
             (fd, tmp) = tempfile.mkstemp(".upload", "", dir)
             nsaved = 0
-            first = ""
+            first = b""
             while True:
                 data = file.file.read(8 * 1024 * 1024)
                 if not data:
                     break
-            if len(first) < 5:
-                first += data[0:5]
-                os.write(fd, data)
-                nsaved += len(data)
+                if len(first) < 5:
+                    first += data[0:5]
+                    os.write(fd, data)
+                    nsaved += len(data)
             os.close(fd)
             os.chmod(tmp, 0o644)
-            if first[0:5] != "root\0":
+            if first[0:5] != b"root\x00":
                 self._error(
                     self.STATUS_ERROR_PARAMETER,
                     "Not a ROOT file",
