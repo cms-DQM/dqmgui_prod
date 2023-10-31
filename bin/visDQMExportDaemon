@@ -8,7 +8,7 @@ from threading import Thread, Lock, active_count
 import subprocess, re
 import pickle as pickle
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 INDEX = sys.argv[1]  # Location of the DQM GUI index from which we export samples.
 WORKDIR = sys.argv[

@@ -5,7 +5,7 @@ from traceback import print_exc
 from datetime import datetime
 from glob import glob
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 FILEREPO = sys.argv[2]  # Final file repository of original DQM files.

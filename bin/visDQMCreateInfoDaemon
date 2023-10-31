@@ -3,7 +3,7 @@ import os, re, hashlib, time, sys
 from traceback import print_exc
 from datetime import datetime
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # Command line arguments
 BASE_DIR = sys.argv[1]  # "/dqmdata/offline/repository/data/OnlineData"

@@ -9,7 +9,7 @@ from traceback import print_exc
 from socket import gethostname
 from subprocess import Popen, PIPE
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 

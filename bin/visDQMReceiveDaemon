@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import os, os.path, time, sys, re, hashlib
+import os, os.path, time, sys, re, hashlib, functools
 from traceback import print_exc
 from datetime import datetime
 from tempfile import mkstemp
 from stat import *
 from Monitoring.DQM import visDQMUtils
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
@@ -228,7 +228,7 @@ def finaliseOneFile(info):
     path = info["import"]
 
     # Verify the MD5 checksum matches
-    with open(path) as _f:
+    with open(path, "rb") as _f:
         curmd5 = hashlib.md5(_f.read()).hexdigest()
     if curmd5 != info["md5sum"]:
         warnPath(
@@ -240,8 +240,8 @@ def finaliseOneFile(info):
         return False
 
     # Verify it's a ROOT file.
-    with open(path) as _f:
-        if _f.read(5) != "root\0":
+    with open(path, "rb") as _f:
+        if _f.read(5) != b"root\x00":
             warnPath(info, path, "not a root file")
             return False
 
@@ -448,7 +448,7 @@ def finaliseOneFile(info):
         os.makedirs(dname)
 
     (fd, tmp) = mkstemp(dir=dname)
-    os.write(fd, "%s\n" % info)
+    os.write(fd, f"{info}\n".encode())
     os.close(fd)
     os.chmod(tmp, 0o666 & ~myumask)
     os.rename(tmp, finfo)
@@ -472,7 +472,7 @@ while True:
     try:
         # Find new complete files. Compute repository destination for
         # each file. Reversion files where an older one already exists.
-        for info in sorted(findNewFiles(), orderFiles):
+        for info in sorted(findNewFiles(), key=functools.cmp_to_key(orderFiles)):
             logme("receiving %s" % info["import"])
             finaliseOneFile(info)
 

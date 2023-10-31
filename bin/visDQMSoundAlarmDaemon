@@ -43,7 +43,8 @@ from subprocess import Popen, PIPE
 # This tool queries the API of the visDQMSoundAlarmManager for the list
 # of disabled plots before sending the alarms.
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# TODO: Is this needed?
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "wb", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters

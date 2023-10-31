@@ -6,7 +6,7 @@ from datetime import datetime
 from tempfile import mkstemp
 from glob import glob
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 ZIPREPO = sys.argv[2]  # Zip file repository repository.

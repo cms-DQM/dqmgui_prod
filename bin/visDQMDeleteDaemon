@@ -6,7 +6,7 @@ from datetime import datetime
 from urllib import request
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+#sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters

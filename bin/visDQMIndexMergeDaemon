@@ -7,7 +7,7 @@ from traceback import print_exc
 from subprocess import Popen, PIPE
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # Command line parameters
 DROPBOX = sys.argv[1]  # DROPBOX for partial indexes
