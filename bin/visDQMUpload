@@ -2,7 +2,7 @@
 
 import sys
 import os
-from http.client import HTTPSConnection, HTTPS
+from http.client import HTTPSConnection
 import mimetypes
 from urllib import request, error
 import gzip
@@ -10,11 +10,7 @@ import hashlib
 from subprocess import getstatusoutput
 from io import StringIO
 from stat import *
-
-try:
-    from Monitoring.DQM import visDQMUtils
-except:
-    import visDQMUtils
+from Monitoring.DQM import visDQMUtils
 
 
 ssl_key_file = None
@@ -23,7 +19,7 @@ ssl_cert_file = None
 
 class HTTPSCertAuth(HTTPSConnection):
     def __init__(self, host, *args, **kwargs):
-        HTTPS.__init__(
+        HTTPSConnection.__init__(
             self, host, key_file=ssl_key_file, cert_file=ssl_cert_file, **kwargs
         )
 
@@ -43,24 +39,24 @@ def encode(args, files):
     multi-part/form-data. We don't actually need to know what we are
     uploading here, so just claim it's all text/plain.
     """
-    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------"
-    (body, crlf) = ("", "\r\n")
+    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------".encode()
+    (body, crlf) = ("".encode(), "\r\n".encode())
     for key, value in args.items():
-        payload = str(value)
-        body += "--" + boundary + crlf
-        body += ('Content-Disposition: form-data; name="%s"' % key) + crlf
+        payload = str(value).encode()
+        body += "--".encode() + boundary + crlf
+        body += ('Content-Disposition: form-data; name="%s"' % key).encode() + crlf
         body += crlf + payload + crlf
     for key, filename in files.items():
-        body += "--" + boundary + crlf
+        body += "--".encode() + boundary + crlf
         body += (
             'Content-Disposition: form-data; name="%s"; filename="%s"'
             % (key, os.path.basename(filename))
-        ) + crlf
-        body += ("Content-Type: %s" % filetype(filename)) + crlf
-        body += ("Content-Length: %d" % os.stat(filename)[ST_SIZE]) + crlf
-        body += crlf + open(filename, "r").read() + crlf
-    body += "--" + boundary + "--" + crlf + crlf
-    return ("multipart/form-data; boundary=" + boundary, body)
+        ).encode() + crlf
+        body += ("Content-Type: %s" % filetype(filename)).encode() + crlf
+        body += ("Content-Length: %d" % os.stat(filename)[ST_SIZE]).encode() + crlf
+        body += crlf + open(filename, "rb").read() + crlf
+    body += "--".encode() + boundary + "--".encode() + crlf + crlf
+    return ("multipart/form-data; boundary=".encode() + boundary, body)
 
 
 def marshall(args, files, request):
@@ -150,7 +146,7 @@ try:
         else:
             print("Using SSL private key", ssl_key_file)
             print("Using SSL public key", ssl_cert_file)
-            with open(sys.argv[2]) as _f:
+            with open(sys.argv[2], "rb") as _f:
                 (headers, data) = upload(
                     sys.argv[1],
                     {
