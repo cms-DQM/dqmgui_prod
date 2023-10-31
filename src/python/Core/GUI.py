@@ -845,7 +845,11 @@ class Server:
                 "WARNING: unable to shorten URL: %s" % longUrl, severity=logging.WARNING
             )
 
-        return '{"id": "%s"}' % shortUrl
+        return (
+            '{"id": "%s"}' % shortUrl.decode("utf-8")
+            if isinstance(shortUrl, bytes)
+            else shortUrl
+        )
 
     def sessionIndex(self, session, *args, **kwargs):
         """Generate top level session index.  This produces the main GUI web
