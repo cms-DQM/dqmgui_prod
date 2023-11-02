@@ -1961,10 +1961,15 @@ public:
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2236,10 +2241,15 @@ public:
     }
 
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2443,10 +2453,15 @@ public:
     }
 
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -2520,10 +2535,15 @@ public:
       }
     }
     // Return the image we produced.
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) {
+      // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 };
 
@@ -3013,10 +3033,14 @@ public:
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) { // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 
   void exit(void) {
@@ -3504,10 +3528,14 @@ public:
                               &obj, 1, STDIMGOPTS);
     }
 
-    if (imageok)
-      return py::make_tuple(imagetype, imagedata);
-    else
+    if (imageok) { // In python3 we can't return the image as a string, it will
+      // try to decode it and crash
+      return py::make_tuple(imagetype,
+                            py::handle<>(PyByteArray_FromStringAndSize(
+                                imagedata.c_str(), imagedata.size())));
+    } else {
       return py::make_tuple(py::object(), py::object());
+    }
   }
 
   // Refresh data from the database for a run.  Checks if the master

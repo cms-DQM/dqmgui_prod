@@ -589,7 +589,8 @@ class DQMUnknownSource(Accelerator.DQMUnknownSource):
 
     # Generate a "missing in action" image for an unknown object.
     def plot(self, *path, **options):
-        return self._plot("/".join(path[4:]), options)
+        a = self._plot("/".join(path[4:]), options)
+        return (a[0], bytes(a[1]))
 
 
 # --------------------------------------------------------------------
@@ -643,7 +644,8 @@ class DQMOverlaySource(Accelerator.DQMOverlaySource):
                 )
         print(final, options)
         assert len(labels) == len(objs)
-        return self._plot(final, options)
+        a = self._plot(final, options)
+        return (a[0], bytes(a[1]))
 
 
 # --------------------------------------------------------------------
@@ -672,7 +674,8 @@ class DQMStripChartSource(Accelerator.DQMStripChartSource):
             if srcname in sources and srcname != "unknown":
                 info = (sources[srcname], int(runnr), "/" + dataset)
 
-        return self._plot(sources.values(), info, "/".join(path), options)
+        a = self._plot(sources.values(), info, "/".join(path), options)
+        return (a[0], bytes(a[1]))
 
 
 # --------------------------------------------------------------------
@@ -699,7 +702,8 @@ class DQMCertificationSource(Accelerator.DQMCertificationSource):
             if srcname in sources and srcname != "unknown":
                 info = (sources[srcname], int(runnr), "/" + dataset)
 
-        return self._plot(info, ".".join(path), "/".join(path[:-1]), path[-1], options)
+        a = self._plot(info, ".".join(path), "/".join(path[:-1]), path[-1], options)
+        return (a[0], bytes(a[1]))
 
 
 # --------------------------------------------------------------------
@@ -778,7 +782,8 @@ class DQMLiveSource(Accelerator.DQMLiveSource):
 
     # Generate an object image given an object path and options.
     def plot(self, runnr, dsP, dsW, dsT, *path, **options):
-        return self._plot("/".join(path), options)
+        a = self._plot("/".join(path), options)
+        return (a[0], bytes(a[1]))
 
 
 # --------------------------------------------------------------------
@@ -802,9 +807,10 @@ class DQMArchiveSource(Accelerator.DQMArchiveSource):
     # 'rootobj'), the run number, dataset path, object name and render
     # options.  See ROOTImage for details about image generation.
     def plot(self, runnr, dsP, dsW, dsT, *path, **options):
-        return self._plot(
+        a = self._plot(
             int(runnr), "/".join(("", dsP, dsW, dsT)), "/".join(path), options
         )
+        return (a[0], bytes(a[1]))
 
     # Generate a json describtion given an object type ('scalar' or
     # 'rootobj'), the run number, dataset path, object name and render
