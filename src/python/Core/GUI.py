@@ -10,7 +10,7 @@
 from importlib import import_module
 from imp import get_suffixes
 from copy import deepcopy
-from cgi import escape
+from html import escape
 from socket import gethostname
 from threading import Thread, Lock
 from cherrypy import expose, HTTPError, request, response, engine, log, tools, Tool

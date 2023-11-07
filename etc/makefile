@@ -1,25 +1,35 @@
 include $(dir $(lastword $(MAKEFILE_LIST)))/makefile.ext
 
 PLATFORM    := $(shell uname)
+
+NOT_FOUND_P3_CONFIG := $(shell which python3-config 2> /dev/null 1> /dev/null; echo $$?)
+
+ifeq ($(NOT_FOUND_P3_CONFIG),0)
+  PYTHON_CONFIG := $(shell which python3-config)
+else
+  PYTHON_CONFIG := $(shell find /usr/bin -name python3*config | head -1)
+endif
+
 SRCDIR       = .
 CXX          = c++
 LDFLAGS_Darwin = -mmacosx-version-min=10.6
 LDFLAGS_Linux  = -Wl,-z,defs
-LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(patsubst %,-L%,$(LIBRARY_DIRS)) $(shell python3-config --ldflags) -Wl,--as-needed
+LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(shell $(PYTHON_CONFIG) --ldflags --embed) $(patsubst %,-L%,$(LIBRARY_DIRS)) -Wl,--as-needed
 
-CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
-	       -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
-	       -pedantic -std=c++14 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS)) \
-           $(shell python3-config --cflags --includes)
-ROOTC_LIBS   = -L/usr/lib64/root -lCore -lImt -lRIO -lNet -lHist -lROOTVecOps -lTree \
-                -lRint -lMatrix -lMathCore -lThread -lMultiProc \
+CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \                            
+               -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \                                  
+               -pedantic -std=c++14 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS)) \               
+                $(shell $(PYTHON_CONFIG) --cflags --includes --embed)
+ROOTC_LIBS   = -L/usr/lib64/root -lCore -lImt -lRIO -lNet -lHist -lROOTVecOps -lTree \                                       
+                -lRint -lMatrix -lMathCore -lThread -lMultiProc \                                                            
                 -lROOTDataFrame -pthread -lm -ldl -rdynamic
-ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \
+ROOTG_LIBS   = $(ROOTC_LIBS) -lTreePlayer -lGpad -lGraf3d -lGraf \                                                           
                -lPhysics -lPostscript -lASImage -ljpeg -lpng
 OTHER_LIBS_Darwin =
 OTHER_LIBS_Linux  = -lrt
-OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -lprotobuf -ldl $(OTHER_LIBS_$(PLATFORM))
-PYTHON_LIBS  = -lboost_python $(shell python3-config --libs)
+OTHER_LIBS   = -lclasslib -lpcre -lz -lpthread -lprotobuf -ldl $(OTHER_LIBS_$(PLATFORM))                                     
+PYTHON_LIBS  = -lboost_python $(shell $(PYTHON_CONFIG) --libs  --embed)                                                               
+
 
 LIB_SRC      = DQM/DQMRenderPlugin.cc \
                DQM/VisDQMBuf.cc \
