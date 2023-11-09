@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, socket
+import sys, socket
 from binascii import hexlify
 from struct import pack, unpack
 
