@@ -207,7 +207,7 @@ threading.stack_size(optStack)
 # interpreter lock check.  We want the check rarely to allow each
 # thread to complete as quickly and linearly as possible.  The lock
 # will be released naturally because of I/O operations.
-sys.setcheckinterval(10000)
+sys.setswitchinterval(10000)
 
 # Write a pid file.  This is process group, not actual pid.
 with open("%s/pid" % cfg.serverDir, "w") as _f:
