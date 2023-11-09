@@ -1,8 +1,8 @@
 import os
 import urllib.request
 import urllib.parse
-import base
-import rootgen
+from . import base
+from . import rootgen
 
 
 class PlotFairyTest(base.BaseIntegrationTest):

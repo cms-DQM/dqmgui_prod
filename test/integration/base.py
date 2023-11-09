@@ -9,11 +9,11 @@ import re
 import time
 import shutil
 import tempfile
-import urllib
+import urllib.request
 from stat import ST_SIZE
 from sys import stdout
 
-import rootgen
+from . import rootgen
 
 
 class UploadWatchTimeout(Exception):
@@ -87,12 +87,14 @@ class BaseIntegrationTest(unittest.TestCase):
 
     @classmethod
     def session(cls):
-        create_session_response = urllib.open(cls.base_url)
+        create_session_response = urllib.request.urlopen(cls.base_url)
         create_session_content = create_session_response.read()
         if create_session_response.getcode() != 200:
             raise RuntimeError("Request failed. Status code re1ceived not 200")
 
-        session = re.search("/dqm/dev/session/([\w\d]+)", create_session_content)
+        session = re.search(
+            "/dqm/dev/session/([\w\d]+)", create_session_content.decode()
+        )
         return session.group(1)
 
     @classmethod
@@ -101,11 +103,13 @@ class BaseIntegrationTest(unittest.TestCase):
             cls.base_url,
             session,
         )
-        response = urllib.open(choose_sample_url)
+        response = urllib.request.urlopen(choose_sample_url)
         content = response.read()
         if response.getcode() != 200:
             raise RuntimeError("Request failed. Status code re1ceived not 200")
-        content = re.sub("\)$", "", re.sub("^\(", "", content)).replace("'", '"')
+        content = re.sub("\)$", "", re.sub("^\(", "", content.decode())).replace(
+            "'", '"'
+        )
         json_content = json.loads(content)
         return json_content
 

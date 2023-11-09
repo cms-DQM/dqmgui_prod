@@ -2,6 +2,7 @@
 
 from stat import *
 from copy import deepcopy
+from html import escape
 from threading import Lock
 from Monitoring.DQM import Accelerator
 from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, ParameterManager
@@ -337,12 +338,12 @@ class DQMFileAccess(DQMUpload):
                 "<h1>%(index)s</h1><table border='0' valign='top' cellpadding='3'>"
                 "%(files)s</table></body></html>"
                 % {
-                    "index": cgi.escape("DQM files"),
+                    "index": escape("DQM files"),
                     "files": "\n".join(
                         [
                             "<tr><td><a href='%(root)s/%(name)s/'>%(name)s"
                             "</a></td><td>&nbsp;</td><td>&nbsp;</td>"
-                            % {"root": rooturl, "name": cgi.escape(x)}
+                            % {"root": rooturl, "name": escape(x)}
                             for x in sorted(self.roots.keys())
                         ]
                     ),
@@ -383,8 +384,8 @@ class DQMFileAccess(DQMUpload):
                 "<table border='0' valign='top' cellpadding='3'>"
                 "%(files)s</table></body></html>"
                 % {
-                    "index": cgi.escape("/".join(path)),
-                    "parent": cgi.escape("/".join(path[:-1])),
+                    "index": escape("/".join(path)),
+                    "parent": escape("/".join(path[:-1])),
                     "root": rooturl,
                     "files": "\n".join(
                         [
@@ -393,8 +394,8 @@ class DQMFileAccess(DQMUpload):
                             "<td>%(mtime)s UTC</td></tr>"
                             % {
                                 "root": rooturl,
-                                "path": cgi.escape("/".join(path)),
-                                "name": cgi.escape(x[0]),
+                                "path": escape("/".join(path)),
+                                "name": escape(x[0]),
                                 "slash": (x[2] and "/") or "",
                                 "size": (x[2] and "-") or x[3].st_size,
                                 "mtime": time.strftime(

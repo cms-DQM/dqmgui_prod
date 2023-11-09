@@ -1,8 +1,8 @@
 import json
 import os
 import urllib.request
-import base
-import rootgen
+from . import base
+from . import rootgen
 from ROOT import gROOT
 
 
