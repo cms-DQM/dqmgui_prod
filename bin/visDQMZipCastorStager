@@ -75,7 +75,8 @@ def load_new_dictionary():
             % pickle_file
         )
         try:
-            new = pickle.load(open(pickle_file, "rb"))
+            with open(pickle_file, "rb") as _f:
+                new = pickle.load(_f)
             # We assume that if the file exists and it can be loaded, it's fine.
             # Otherwise it would be sabotage anyway and there's no way to counter it.
             logme("It was loaded succesfully and contains %s entries." % len(new))
@@ -97,7 +98,8 @@ def persist_new_dictionary(new):
     # file in our dropbox. The file is called new.pyckle.
     pickle_file = os.path.join(DROPBOX, NEW_DICT_PICKLE_FILENAME)
     try:
-        pickle.dump(new, open(pickle_file, "wb"))
+        with open(pickle_file, "wb") as _f:
+            pickle.dump(new, _f)
         logme(
             "Successfully dumped status of the 'new' dictionary with %s entries "
             "in pickle file at %s." % (len(new), pickle_file)

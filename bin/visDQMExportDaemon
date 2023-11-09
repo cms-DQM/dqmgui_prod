@@ -214,7 +214,8 @@ class SampleManager:
             logme("WARNING: No cache found, generating one.")
             return False
         try:
-            self.SAMPLES = pickle.load(open(CACHEFILE, "rb"))
+            with open(CACHEFILE, "rb") as _f:
+                self.SAMPLES = pickle.load(_f)
             logme("INFO: Cache file loaded.")
             return True
         except:

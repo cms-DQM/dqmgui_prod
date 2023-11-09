@@ -24,22 +24,23 @@ def encode(args, files):
     http://www.ietf.org/rfc/rfc1867.txt for a clear explanation of the
     required format (section 6).
     """
-    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------"
-    (body, crlf) = ("", "\r\n")
+    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------".encode()
+    (body, crlf) = ("".encode(), "\r\n".encode())
     for key, value in args.items():
-        body += "--" + boundary + crlf
-        body += ('Content-disposition: form-data; name="%s"' % key) + crlf
-        body += crlf + str(value) + crlf
+        body += "--".encode() + boundary + crlf
+        body += ('Content-disposition: form-data; name="%s"' % key).encode() + crlf
+        body += crlf + str(value).encode() + crlf
     for key, filename in files.items():
-        body += "--" + boundary + crlf
+        body += "--".encode() + boundary + crlf
         body += (
             'Content-Disposition: form-data; name="%s"; filename="%s"'
             % (key, os.path.basename(filename))
-        ) + crlf
-        body += ("Content-Type: %s" % filetype(filename)) + crlf
-        body += crlf + open(filename, "r").read() + crlf
-    body += "--" + boundary + "--" + crlf + crlf
-    return ("multipart/form-data; boundary=" + boundary, body)
+        ).encode() + crlf
+        body += ("Content-Type: %s" % filetype(filename)).encode() + crlf
+        with open(filename, "rb") as _f:
+            body += crlf + _f.read() + crlf
+    body += "--" + boundary + "--".encode() + crlf + crlf
+    return ("multipart/form-data; boundary=".encode() + boundary, body)
 
 
 def req_init(c, url, files):

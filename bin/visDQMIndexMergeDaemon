@@ -71,33 +71,35 @@ while True:
 
         # Start merging
         for i in sorted(indexes.keys()):
-            try:
-                lFile = open("%s/lock" % INDEX, "w+")
-                lockf(lFile, LOCK_EX)
-                lFile.write(str(os.getpid()))
+            with open(f"{INDEX}/lock", "w+") as lFile:
+                try:
+                    lockf(lFile, LOCK_EX)
+                    lFile.write(str(os.getpid()))
 
-                # Print a small diagnostic
-                logme("INFO: Starting merge of index %s", i)
-                rc, so, se = runme("visDQMIndex merge %s %s", INDEX, indexes[i])
-                if rc != 0:
-                    logme("command failed with exit code %d", rc)
-                    assert False, "%s\n%s" % (so, se)
+                    # Print a small diagnostic
+                    logme("INFO: Starting merge of index %s", i)
+                    rc, so, se = runme("visDQMIndex merge %s %s", INDEX, indexes[i])
+                    if rc != 0:
+                        logme("command failed with exit code %d", rc)
+                        assert False, "%s\n%s" % (so, se)
 
-                logme("INFO: Finished merging index %s", i)
+                    logme("INFO: Finished merging index %s", i)
 
-            finally:
-                # Clean up, if something fails we do not want to try and  merge
-                # the same index
-                lockf(lFile, LOCK_UN)
-                lFile.close()
-                os.remove(i)
+                finally:
+                    # Clean up, if something fails we do not want to try and  merge
+                    # the same index
+                    lockf(lFile, LOCK_UN)
+                    lFile.close()
+                    os.remove(i)
 
-            # shutil.rmtree(indexes[i])
-            if not IMPORTDBX:
-                continue
+                # shutil.rmtree(indexes[i])
+                if not IMPORTDBX:
+                    continue
 
-            sleepTime = min(len(glob("%s/*.dqminfo" % IMPORTDBX)) * AVGITIME, WAITTIME)
-            time.sleep(sleepTime)
+                sleepTime = min(
+                    len(glob("%s/*.dqminfo" % IMPORTDBX)) * AVGITIME, WAITTIME
+                )
+                time.sleep(sleepTime)
 
     except KeyboardInterrupt as e:
         sys.exit(0)

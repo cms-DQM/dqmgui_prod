@@ -16,22 +16,23 @@ def encode(args, files):
     multi-part/form-data. We don't actually need to know what we are
     uploading here, so just claim it's all text/plain.
     """
-    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------"
-    (body, crlf) = ("", "\r\n")
+    boundary = "----------=_DQM_FILE_BOUNDARY_=-----------".encode()
+    (body, crlf) = ("".encode(), "\r\n".encode())
     for key, value in args.items():
-        body += "--" + boundary + crlf
-        body += ('Content-disposition: form-data; name="%s"' % key) + crlf
-        body += crlf + str(value) + crlf
+        body += "--".encode() + boundary + crlf
+        body += ('Content-disposition: form-data; name="%s"' % key).encode() + crlf
+        body += crlf + str(value).encode() + crlf
     for key, filename in files.items():
-        body += "--" + boundary + crlf
+        body += "--".encode() + boundary + crlf
         body += (
             'Content-Disposition: form-data; name="%s"; filename="%s"'
             % (key, os.path.basename(filename))
-        ) + crlf
-        body += ("Content-Type: %s" % filetype(filename)) + crlf
-        body += crlf + open(filename, "r").read() + crlf
-    body += "--" + boundary + "--" + crlf + crlf
-    return ("multipart/form-data; boundary=" + boundary, body)
+        ).encode() + crlf
+        body += ("Content-Type: %s" % filetype(filename)).encode() + crlf
+        with open(filename, "r") as _f:
+            body += crlf + _f.read() + crlf
+    body += "--".encode() + boundary + "--".encode() + crlf + crlf
+    return ("multipart/form-data; boundary=".encode() + boundary, body)
 
 
 def marshall(args, files, request):
@@ -59,11 +60,12 @@ def upload(url, args, files):
 
 
 try:
-    (headers, data) = upload(
-        sys.argv[1] + "/iguana-snapshot/store",
-        {"meta": open(sys.argv[3]).read(), "size": os.stat(sys.argv[2])[ST_SIZE]},
-        {"file": sys.argv[2]},
-    )
+    with open(sys.argv[3]) as _f:
+        (headers, data) = upload(
+            sys.argv[1] + "/iguana-snapshot/store",
+            {"meta": _f.read(), "size": os.stat(sys.argv[2])[ST_SIZE]},
+            {"file": sys.argv[2]},
+        )
     print("Status code: ", headers.get("Evd-Status-Code", "None"))
     print("Message:     ", headers.get("Evd-Status-Message", "None"))
     print("Detail:      ", headers.get("Evd-Status-Detail", "None"))

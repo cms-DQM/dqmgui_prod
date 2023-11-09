@@ -25,9 +25,8 @@ def logme(msg, *args):
 
 def writeInfoFile(fileName, infoStr):
     logme("INFO: Creating File %s", fileName)
-    infoFile = open(fileName, "w")
-    infoFile.write("%s\n" % infoStr)
-    infoFile.close()
+    with open(fileName, "w") as _f:
+        _f.write("%s\n" % infoStr)
 
 
 # --------------------------------------------------------------------
@@ -72,7 +71,8 @@ while True:
                         "runnr": runNr,
                         "filepat": "OnlineData/original/%05dxxxx/%07dxx/DQM_V%%04d_%s_R%09d.root"
                         % (runNr / 10000, runNr / 100, subSystem, runNr),
-                        "md5sum": "%s" % hashlib.md5(file_contents).hexdigest(),
+                        "md5sum": "%s"
+                        % hashlib.md5(file_contents.encode()).hexdigest(),
                         "class": "online_data",
                         "version": version,
                         "time": int(os.stat(fileName).st_mtime),

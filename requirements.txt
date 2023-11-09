@@ -1,3 +1,4 @@
+requests
 cherrypy
 pycurl
 numpy

@@ -54,7 +54,8 @@ def encode(args, files):
         ).encode() + crlf
         body += ("Content-Type: %s" % filetype(filename)).encode() + crlf
         body += ("Content-Length: %d" % os.stat(filename)[ST_SIZE]).encode() + crlf
-        body += crlf + open(filename, "rb").read() + crlf
+        with open(filename, "rb") as _f:
+            body += crlf + _f.read() + crlf
     body += "--".encode() + boundary + "--".encode() + crlf + crlf
     return ("multipart/form-data; boundary=".encode() + boundary, body)
 

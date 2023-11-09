@@ -6,7 +6,7 @@ from datetime import datetime
 from urllib import request
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-#sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
+# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
@@ -44,10 +44,9 @@ def logme(msg, *args):
 
 # Write chache to disk.
 def saveCacheFile(runIndex):
-    f = open(CACHEFILE, "w")
-    f.write(str(runIndex))
-    f.write("\n")
-    f.close()
+    with open(CACHEFILE, "w") as f:
+        f.write(str(runIndex))
+        f.write("\n")
 
 
 # Shorthand to extract GUI information, it fails if the retrieved
@@ -358,31 +357,31 @@ while True:
 
         # Proceed to remove
         for run, dsn, dt in remove:
-            try:
-                refreshCache = True
-                lFile = open("%s/lock" % INDEX, "w+")
-                lockf(lFile, LOCK_EX)
-                lFile.write(str(os.getpid()))
+            with open(f"{INDEX}/lock", "w+") as lFile:
+                try:
+                    refreshCache = True
+                    lockf(lFile, LOCK_EX)
+                    lFile.write(str(os.getpid()))
 
-                # Print a small diagnostic
-                logme("INFO: Removing run# %s" " from the '%s' dataset", run, dsn)
-                rc = os.system(
-                    "visDQMIndex remove --dataset " "%s --run %s %s" % (dsn, run, INDEX)
-                )
-                if rc != 0:
-                    logme("command failed with exit code %d", rc)
-                    assert False
+                    # Print a small diagnostic
+                    logme("INFO: Removing run# %s" " from the '%s' dataset", run, dsn)
+                    rc = os.system(
+                        "visDQMIndex remove --dataset "
+                        "%s --run %s %s" % (dsn, run, INDEX)
+                    )
+                    if rc != 0:
+                        logme("command failed with exit code %d", rc)
+                        assert False
 
-                # Since everything worked only write cache on the end of the cycle
-                refreshCache = False
+                    # Since everything worked only write cache on the end of the cycle
+                    refreshCache = False
 
-            finally:
-                lockf(lFile, LOCK_UN)
-                lFile.close()
-                del runDS[dt][dsn][run]
-                if refreshCache:
-                    logme("INFO: saving cache file")
-                    saveCacheFile(runDS)
+                finally:
+                    lockf(lFile, LOCK_UN)
+                    del runDS[dt][dsn][run]
+                    if refreshCache:
+                        logme("INFO: saving cache file")
+                        saveCacheFile(runDS)
 
         saveCacheFile(runDS)
 

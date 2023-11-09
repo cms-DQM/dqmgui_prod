@@ -126,7 +126,8 @@ class EVDSnapshotUpload:
                     "Wrote %d bytes, expected to write %d" % (nsaved, size),
                 )
             shutil.move(tmp, fname)
-            open(fname + ".info", "w").write(meta)
+            with open(fname + ".info", "w") as _f:
+                _f.write(meta)
             self.lock.release()
 
         except Exception as e:
@@ -165,7 +166,8 @@ class EVDSnapshotSource:
             date = ".".join(date.split(".")[::-1])
             path = "%s/%s/screenShot-%s-%s.png" % (self.datadir, date, time, date)
             if os.path.exists(path):
-                return ("image/png", open(path).read())
+                with open(path) as _f:
+                    return ("image/png", _f.read())
         return (None, None)
 
 

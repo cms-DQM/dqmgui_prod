@@ -105,8 +105,8 @@ class ServerDef:
             s = os.stat(path)
             f["mtime"] = s.st_mtime
             f["size"] = s.st_size
-            with open(path, "r") as _f:
-                f["cksum"] = hashlib.md5(_f.read().encode()).hexdigest()
+            with open(path, "rb") as _f:
+                f["cksum"] = hashlib.md5(_f.read()).hexdigest()
 
         # Create plug-in finger print and a path to the binary to load.
         p["data"] = "\n".join(

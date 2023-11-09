@@ -100,18 +100,20 @@ def buildlayouts(layouts, statedir):
         locals["dqmitems"] = {}
         allLayouts = {}
         allLayouts["dqmitems"] = {}
-        output = open("%s/layouts.json" % statedir, "w")
-        for f in files:
-            try:
-                print("Importing layout %s" % f)
-                exec(open(f).read(), globals(), locals)
-                allLayouts["dqmitems"].update(locals["dqmitems"])
-            except Exception as e:
-                print("Failed to load layout %s: %s" % (f, e))
-        output.write(
-            json.dumps(allLayouts["dqmitems"], cls=LayoutEncoder, separators=(",", ":"))
-        )
-        output.close()
+        with open(f"{statedir}/layouts.json", "w") as _f_out:
+            for f in files:
+                try:
+                    print("Importing layout %s" % f)
+                    with open(f) as _f_in:
+                        exec(_f_in.read(), globals(), locals)
+                    allLayouts["dqmitems"].update(locals["dqmitems"])
+                except Exception as e:
+                    print("Failed to load layout %s: %s" % (f, e))
+            _f_out.write(
+                json.dumps(
+                    allLayouts["dqmitems"], cls=LayoutEncoder, separators=(",", ":")
+                )
+            )
     else:
         print("Layout dictionary is up-to-date")
 
@@ -190,7 +192,8 @@ if action not in ("stop", "restart", "start", "rebuild", "verify", "show"):
 # Read and validate the configuration file.
 try:
     x = {"server": ServerDef(), "envsetup": "", "__file__": cfgfile, "LAYOUTS": []}
-    exec(open(cfgfile).read(), globals(), x)
+    with open(cfgfile) as _f:
+        exec(_f.read(), globals(), x)
     cfg = x["server"]
     envsetup = x["envsetup"]
 
@@ -213,7 +216,8 @@ if action == "restart" or action == "stop":
         sys.stdout.flush()
         for pidfile in ["%s/pid" % cfg.serverDir] + glob("%s/*/pid" % cfg.serverDir):
             if os.path.exists(pidfile):
-                pid = int(open(pidfile).readline())
+                with open(pidfile) as _f:
+                    pid = int(_f.readline())
                 os.remove(pidfile)
                 sys.stdout.write(" %s" % pid)
                 sys.stdout.flush()

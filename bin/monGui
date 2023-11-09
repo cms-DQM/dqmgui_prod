@@ -19,7 +19,8 @@ if "PYTHONUNBUFFERED" not in os.environ:
 # Load the configuration.
 cfgfile = sys.argv[1]
 x = {"server": ServerDef(), "__file__": cfgfile, "modules": ()}
-exec(open(cfgfile).read(), globals(), x)
+with open(cfgfile) as _f:
+    exec(_f.read(), globals(), x)
 cfg = x["server"]
 err = cfg.validate()
 if err != None:
@@ -74,7 +75,8 @@ while True:
 
     for pidfile in glob("%s/*/pid" % cfg.serverDir):
         if os.path.exists(pidfile):
-            pid = int(open(pidfile).readline())
+            with open(pidfile) as _f_pid:
+                pid = int(_f_pid.readline())
             os.remove(pidfile)
             cherrypy.log("WATCHDOG: Killing slave server %d" % pid)
             try:
@@ -208,7 +210,8 @@ threading.stack_size(optStack)
 sys.setcheckinterval(10000)
 
 # Write a pid file.  This is process group, not actual pid.
-open("%s/pid" % cfg.serverDir, "w").write(str(os.getpgid(0)))
+with open("%s/pid" % cfg.serverDir, "w") as _f:
+    _f.write(str(os.getpgid(0)))
 
 # Mount GUI and set up configuration.  Turn off code auto-reload.
 # Increase the socket queue size so we don't unnecessarily drop

@@ -430,24 +430,23 @@ while True:
                 break
 
             # Actually register the file.
-            try:
-                lFile = open("%s/lock" % args.INDEX, "w+")
-                lockf(lFile, LOCK_EX)
-                lFile.write(str(os.getpid()))
-                logme("importing %s", fname)
-                start = time.time()
-                if info["class"] == "online_data":
-                    rc = os.system(
-                        "exec visDQMIndex add --dataset "
-                        ' "%s" %s %s' % (info["dataset"], args.INDEX, fname)
-                    )
-                else:
-                    rc = os.system("exec visDQMIndex add %s %s" % (args.INDEX, fname))
-                end = time.time()
-                logme("imported %s with status %d in %5.3fs", fname, rc, end - start)
-            finally:
-                lockf(lFile, LOCK_UN)
-                lFile.close()
+            with open(f"{args.INDEX}/lock", "w+") as lFile:
+                try:
+                    lockf(lFile, LOCK_EX)
+                    lFile.write(str(os.getpid()))
+                    logme("importing %s", fname)
+                    start = time.time()
+                    if info["class"] == "online_data":
+                        rc = os.system(
+                            "exec visDQMIndex add --dataset "
+                            ' "%s" %s %s' % (info["dataset"], args.INDEX, fname)
+                        )
+                    else:
+                        rc = os.system("exec visDQMIndex add %s %s" % (args.INDEX, fname))
+                    end = time.time()
+                    logme("imported %s with status %d in %5.3fs", fname, rc, end - start)
+                finally:
+                    lockf(lFile, LOCK_UN)
 
             # Barf if the registration failed, mark the file as bad;
             # otherwise pass the file onwards.

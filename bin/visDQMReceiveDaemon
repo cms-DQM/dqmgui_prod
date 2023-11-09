@@ -234,8 +234,7 @@ def finaliseOneFile(info):
         warnPath(
             info,
             path,
-            "md5 checksum mismatch, expected [%s], found [%s]"
-            % (info["md5sum"], curmd5),
+            f"md5 checksum mismatch, expected [{info['md5sum']}], found [{curmd5}]",
         )
         return False
 

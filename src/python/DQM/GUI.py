@@ -139,9 +139,8 @@ class DQMFileAccess(DQMUpload):
             os.makedirs(uploads)
         if aclfile and os.path.exists(aclfile):
             try:
-                f = open(aclfile, "rb")
-                self.key = f.read()
-                f.close()
+                with open(aclfile, "rb") as f:
+                    self.key = f.read()
             except:
                 _logerr("Keyfile %s could not be read." % aclfile)
 
@@ -279,7 +278,8 @@ class DQMFileAccess(DQMUpload):
                     "Wrote %d bytes, expected to write %d" % (nsaved, size),
                 )
             shutil.move(tmp, fname)
-            open(fname + ".origin", "w").write("%s %d %s\n" % (checksum, size, fname))
+            with open(fname + ".origin", "w") as _f:
+                _f.write("%s %d %s\n" % (checksum, size, fname))
             self.lock.release()
 
         except Exception as e:
@@ -467,18 +467,18 @@ class DQMLayoutAccess(DQMUpload):
             # clean up so the upload can be re-attempted later.
             if not os.path.exists(dir):
                 os.makedirs(dir)
-            f = open(fname, "w")
-            nsaved = 0
-            first = ""
-            while True:
-                data = file.file.read(8 * 1024 * 1024)
-                if not data:
-                    break
-            if len(first) < 5:
-                first += data[0:5]
-                f.write(data)
-                nsaved += len(data)
-                f.close()
+            with open(fname, "w") as f:
+                nsaved = 0
+                first = ""
+                while True:
+                    data = file.file.read(8 * 1024 * 1024)
+                    if not data:
+                        break
+                if len(first) < 5:
+                    first += data[0:5]
+                    f.write(data)
+                    nsaved += len(data)
+                    f.close()
 
             # Reads in the uploaded JSON file that describes the layout,
             # decodes it as python dictionary.

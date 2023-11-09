@@ -104,7 +104,8 @@ class SessionThread(Thread):
             for name, data in save.items():
                 path = self._path + "/" + name
                 tmppath = path + ".tmp"
-                pickle.dump(data, open(tmppath, "wb"))
+                with open(tmppath, "wb") as _f:
+                    pickle.dump(data, _f)
 
                 try:
                     os.remove(path)
@@ -235,11 +236,12 @@ class Server:
             if m:
                 (base,) = m.groups()
                 filename = "%s/templates/%s" % (self.contentpath, file)
-                self.templates[base] = [
-                    filename,
-                    os.stat(filename)[ST_MTIME],
-                    open(filename).read(),
-                ]
+                with open(filename) as _f:
+                    self.templates[base] = [
+                        filename,
+                        os.stat(filename)[ST_MTIME],
+                        _f.read(),
+                    ]
 
         self._yui = os.path.join(os.getenv("YUI_ROOT"), "build")
         self._extjs = os.getenv("EXTJS_ROOT")
@@ -272,7 +274,8 @@ class Server:
                 w.customise()
 
         self._addJSFragment("%s/javascript/Core/End.js" % self.contentpath)
-        self._addChecksum(None, cfgfile, open(cfgfile).read())
+        with open(cfgfile) as _f:
+            self._addChecksum(None, cfgfile, _f.read())
         for name, m in sys.modules.items():
             if (
                 (
@@ -294,7 +297,8 @@ class Server:
                     source = inspect.getabsfile(m)
                     if "b" in mode and source.lower()[-len(suffix) :] == suffix:
                         if os.path.exists(source) and os.stat(source):
-                            data = open(source, "rb").read()
+                            with open(source, "rb") as _f:
+                                data = _f.read()
                             self._addChecksum(name, source, data)
                             processed = True
                             break
@@ -318,9 +322,7 @@ class Server:
                 "srcname": file.rsplit("/", 1)[-1],
                 "mtime": (s and s[ST_MTIME]) or -1,
                 "srclen": (s and s[ST_SIZE]) or -1,
-                "srcmd5": hashlib.md5(
-                    data.encode("utf-8") if isinstance(data, str) else data
-                )
+                "srcmd5": hashlib.md5(data.encode() if isinstance(data, str) else data)
                 .digest()
                 .hex(),
             }
@@ -333,7 +335,8 @@ class Server:
         mtime = os.stat(fileinfo[0])[ST_MTIME]
         if mtime != fileinfo[1]:
             fileinfo[1] = mtime
-            fileinfo[2] = open(fileinfo[0]).read()
+            with open(fileinfo[0]) as _f:
+                fileinfo[2] = _f.read()
         self.lock.release()
         return fileinfo[2]
 

@@ -90,7 +90,8 @@ def load_persistent_state():
     if os.path.isfile(pickle_file):
         logme("Found a persistent version of the state in file %s." % pickle_file)
         try:
-            state = pickle.load(open(pickle_file, "rb"))
+            with open(pickle_file, "rb") as _f:
+                state = pickle.load(_f)
             new, WARNINGS, last_warnings_flush = state
             # We assume that if the file exists and it can be loaded, it's fine.
             # Otherwise it would be sabotage anyway and there's no way to counter it.
@@ -119,7 +120,8 @@ def persist_persistent_state(new):
     pickle_file = os.path.join(DROPBOX, STATE_PICKLE_FILENAME)
     try:
         state = (new, WARNINGS, last_warnings_flush)
-        pickle.dump(state, open(pickle_file, "wb"))
+        with open(pickle_file, "wb") as _f:
+            pickle.dump(state, _f)
         logme(
             "Succesfully dumped state with %s new, %s warnings and "
             "last warning flushed at %s in pickle file at %s."
