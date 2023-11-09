@@ -1,6 +1,6 @@
 # To run the test: py.test -s -v test_upload.py
 
-import cherrypy, time, httplib, os, sys
+import cherrypy, time, os
 from cherrypy.test import helper
 
 

@@ -1,5 +1,5 @@
 import json
-import urllib2
+import urllib.request
 
 import base
 import rootgen
@@ -105,7 +105,7 @@ class JsonFairyTest(base.BaseIntegrationTest):
             self.dataset,
             name,
         )
-        histogram_response = urllib2.urlopen(histogram_url)
+        histogram_response = urllib.request.urlopen(histogram_url)
         histogram_content = histogram_response.read()
         print(
             "Histogram fetched from %s with status %d"

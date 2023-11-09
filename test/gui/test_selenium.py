@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from urllib2 import urlopen
+from urllib.request import urlopen
 
 import time
 from pyvirtualdisplay import Display

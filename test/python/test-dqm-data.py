@@ -51,7 +51,7 @@ gui.workspaces.append(ws)
 wsnames.append(ws.name)
 wsobj.append(ws)
 
-for i in xrange(1, 2):  # 20
+for i in range(1, 2):  # 20
     session = {
         "core.clientid": "127.0.0.1",
         "core.name": "TESTME001",

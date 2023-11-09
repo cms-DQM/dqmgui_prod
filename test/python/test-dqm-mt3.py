@@ -1,8 +1,9 @@
-import time, os, time, re, md5, thread
+import time, time, threading
+from hashlib import md5
 import libVisDQMServer as Native
 from threading import Thread
 
-thread.stack_size(128 * 1024)
+threading.stack_size(128 * 1024)
 
 
 class Gui:
@@ -193,8 +194,8 @@ class PollThread(Thread):
         }
 
     def run(self):
-        for z in xrange(1, 101):
-            for i in xrange(1, 101):
+        for z in range(1, 101):
+            for i in range(1, 101):
                 ws = wsobj[i % len(wsobj)]
                 data = eval(ws._state(self.session))
                 print(
@@ -210,23 +211,25 @@ class PollThread(Thread):
                     ),
                 )
                 print(
-                    md5.new(
-                        gui.sources[0].plot(
-                            "L1TEMU",
-                            "DTTPG",
-                            "DTPErrorFlag",
-                            trend="x-mean-rms",
-                            n=("%d" % (2 * i + z)),
-                            omit="none",
-                            axis="run",
-                            current="archive/119228/Cosmics/Commissioning09-PromptReco-v9/RECO",
-                            w=("%d" % (200 + i)),
-                            h=("%d" % (200 + z)),
-                        )[1]
+                    md5(
+                        bytes(
+                            gui.sources[0].plot(
+                                "L1TEMU",
+                                "DTTPG",
+                                "DTPErrorFlag",
+                                trend="x-mean-rms",
+                                n=("%d" % (2 * i + z)),
+                                omit="none",
+                                axis="run",
+                                current="archive/119228/Cosmics/Commissioning09-PromptReco-v9/RECO",
+                                w=("%d" % (200 + i)),
+                                h=("%d" % (200 + z)),
+                            )[1]
+                        )
                     ).hexdigest()
                 )
                 # time.sleep(.1)
 
 
-for i in xrange(1, 50):
+for i in (1, 50):
     PollThread(i).start()

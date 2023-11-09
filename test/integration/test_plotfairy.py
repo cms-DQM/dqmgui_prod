@@ -1,7 +1,6 @@
-import json
 import os
-import urllib
-import urllib2
+import urllib.request
+import urllib.parse
 import base
 import rootgen
 
@@ -113,8 +112,8 @@ class PlotFairyTest(base.BaseIntegrationTest):
             self.dataset,
             "Pixel/IntegrationTest/IntegrationTestTH1_alt",
         )
-        obj1_quoted = urllib.quote_plus(obj1)
-        obj2_quoted = urllib.quote_plus(obj2)
+        obj1_quoted = urllib.parse.quote_plus(obj1)
+        obj2_quoted = urllib.parse.quote_plus(obj2)
         histogram_url = (
             "%splotfairy/overlay?withref=yes;obj=%s;obj=%s;obj=%s;w=1042;h=512"
             % (self.base_url, obj1_quoted, obj1_quoted, obj2_quoted)
@@ -146,8 +145,8 @@ class PlotFairyTest(base.BaseIntegrationTest):
             self.dataset,
             "Pixel/IntegrationTest/IntegrationTestTH1_alt",
         )
-        obj1_quoted = urllib.quote_plus(obj1)
-        obj2_quoted = urllib.quote_plus(obj2)
+        obj1_quoted = urllib.parse.quote_plus(obj1)
+        obj2_quoted = urllib.parse.quote_plus(obj2)
         histogram_url = (
             "%splotfairy/overlay?withref=yes;obj=%s;obj=%s;obj=%s;w=1042;h=512;reflabel=FirstSample;reflabel=SecondSample"
             % (self.base_url, obj1_quoted, obj1_quoted, obj2_quoted)
@@ -184,7 +183,7 @@ class PlotFairyTest(base.BaseIntegrationTest):
         return self.fetch_histogram_by_url(histogram_url)
 
     def fetch_histogram_by_url(self, url):
-        histogram_response = urllib2.urlopen(url)
+        histogram_response = urllib.request.urlopen(url)
         histogram_content = histogram_response.read()
         print(
             "Histogram fetched from %s with status %d"

@@ -1,4 +1,4 @@
-import time, os, time, re
+import time, time
 import libVisDQMServer as Native
 from threading import Thread
 
@@ -133,8 +133,8 @@ class PollThread(Thread):
         }
 
     def run(self):
-        for x in xrange(1, 101):
-            for i in xrange(1, 101):
+        for x in range(1, 101):
+            for i in range(1, 101):
                 ws = wsobj[i % len(wsobj)]
                 data = eval(ws._state(self.session))
                 print(
@@ -150,5 +150,5 @@ class PollThread(Thread):
                 # time.sleep(.1)
 
 
-for i in xrange(1, 8):
+for i in range(1, 8):
     PollThread(i).start()
