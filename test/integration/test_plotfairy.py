@@ -69,15 +69,15 @@ class PlotFairyTest(base.BaseIntegrationTest):
             "Pixel/IntegrationTest/IntegrationTestTH1"
         )
 
-        self.assertEquals(
+        self.assertEqual(
             "image/png", headers["content-type"], "Plotfairy should return PNG files."
         )
-        self.assertEquals(
+        self.assertEqual(
             file_stat.st_size,
             int(headers["content-length"]),
             "Plotfairy must respond with the same file size always.",
         )
-        self.assertEquals(
+        self.assertEqual(
             content, expected_content, "Plotfairy should have same PNG file content."
         )
 
@@ -87,15 +87,15 @@ class PlotFairyTest(base.BaseIntegrationTest):
             "Pixel/IntegrationTest/IntegrationTestTH2"
         )
 
-        self.assertEquals(
+        self.assertEqual(
             "image/png", headers["content-type"], "Plotfairy should return PNG files."
         )
-        self.assertEquals(
+        self.assertEqual(
             file_stat.st_size,
             int(headers["content-length"]),
             "Plotfairy must respond with the same file size always.",
         )
-        self.assertEquals(
+        self.assertEqual(
             content, expected_content, "Plotfairy should have same PNG file content."
         )
 
@@ -120,15 +120,15 @@ class PlotFairyTest(base.BaseIntegrationTest):
         )
         (content, headers) = self.fetch_histogram_by_url(histogram_url)
 
-        self.assertEquals(
+        self.assertEqual(
             "image/png", headers["content-type"], "Plotfairy should return PNG files."
         )
-        self.assertEquals(
+        self.assertEqual(
             file_stat.st_size,
             int(headers["content-length"]),
             "Plotfairy must respond with the same file size always.",
         )
-        self.assertEquals(
+        self.assertEqual(
             content, expected_content, "Plotfairy should have same PNG file content."
         )
 
@@ -153,15 +153,15 @@ class PlotFairyTest(base.BaseIntegrationTest):
         )
         (content, headers) = self.fetch_histogram_by_url(histogram_url)
 
-        self.assertEquals(
+        self.assertEqual(
             "image/png", headers["content-type"], "Plotfairy should return PNG files."
         )
-        self.assertEquals(
+        self.assertEqual(
             file_stat.st_size,
             int(headers["content-length"]),
             "Plotfairy must respond with the same file size always.",
         )
-        self.assertEquals(
+        self.assertEqual(
             content, expected_content, "Plotfairy should have same PNG file content."
         )
 
@@ -169,7 +169,7 @@ class PlotFairyTest(base.BaseIntegrationTest):
         script_dir = os.path.dirname(os.path.realpath(__file__))
         expected_output_path = script_dir + "/" + filename
         file_stat = os.stat(expected_output_path)
-        with open(expected_output_path) as file:
+        with open(expected_output_path, "rb") as file:
             expected_content = file.read()
         return expected_content, file_stat
 
@@ -189,9 +189,9 @@ class PlotFairyTest(base.BaseIntegrationTest):
             "Histogram fetched from %s with status %d"
             % (url, histogram_response.getcode())
         )
-        self.assertEquals(
+        self.assertEqual(
             histogram_response.getcode(),
             200,
             "Request failed. Status code received not 200",
         )
-        return histogram_content, histogram_response.headers.dict
+        return histogram_content, histogram_response.headers

@@ -40,23 +40,23 @@ class JsRootFairyTest(base.BaseIntegrationTest):
     def test_TH1F(self):
         response = self.fetch_histogram("Pixel/AdditionalPixelErrors/FedChNErr")
 
-        self.assertEquals("TH1F", response["_typename"])
-        self.assertEquals("FedChNErr", response["fName"])
-        self.assertEquals("FedChNErr", response["fTitle"])
+        self.assertEqual("TH1F", response["_typename"])
+        self.assertEqual("FedChNErr", response["fName"])
+        self.assertEqual("FedChNErr", response["fTitle"])
 
     def test_TH2F(self):
         response = self.fetch_histogram("Pixel/AdditionalPixelErrors/FedChLErr")
 
-        self.assertEquals("TH2F", response["_typename"])
-        self.assertEquals("FedChLErr", response["fName"])
-        self.assertEquals("FedChLErr", response["fTitle"])
+        self.assertEqual("TH2F", response["_typename"])
+        self.assertEqual("FedChLErr", response["fName"])
+        self.assertEqual("FedChLErr", response["fTitle"])
 
     def test_TProfile(self):
         response = self.fetch_histogram("Pixel/averageDigiOccupancy")
 
-        self.assertEquals("TProfile", response["_typename"])
-        self.assertEquals("averageDigiOccupancy", response["fName"])
-        self.assertEquals("averageDigiOccupancy", response["fTitle"])
+        self.assertEqual("TProfile", response["_typename"])
+        self.assertEqual("averageDigiOccupancy", response["fName"])
+        self.assertEqual("averageDigiOccupancy", response["fTitle"])
 
     def test_exactJSON(self):
         # The fixed expected json output is dependant on ROOT version.
@@ -70,7 +70,7 @@ class JsRootFairyTest(base.BaseIntegrationTest):
         response = self.fetch_histogram("Pixel/AdditionalPixelErrors/FedChNErr")
 
         root_version = gROOT.GetVersion()
-        self.assertEquals(
+        self.assertDictEqual(
             expected_json,
             response,
             "%s is not compatible with current ROOT version %s"
@@ -90,10 +90,10 @@ class JsRootFairyTest(base.BaseIntegrationTest):
             "Histogram fetched from %s with status %d"
             % (histogram_url, histogram_response.getcode())
         )
-        self.assertEquals(
+        self.assertEqual(
             histogram_response.getcode(),
             200,
-            "Request failed. Status code re1ceived not 200",
+            "Request failed. Status code received was not 200",
         )
         histogram_json = json.loads(histogram_content)
         return histogram_json
