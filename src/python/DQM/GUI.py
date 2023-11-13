@@ -258,12 +258,12 @@ class DQMFileAccess(DQMUpload):
             first = b""
             while True:
                 data = file.file.read(8 * 1024 * 1024)
-                if not data:
+                if len(data) < 1:
                     break
                 if len(first) < 5:
                     first += data[0:5]
-                    os.write(fd, data)
-                    nsaved += len(data)
+                os.write(fd, data)
+                nsaved += len(data)
             os.close(fd)
             os.chmod(tmp, 0o644)
             if first[0:5] != b"root\x00":
