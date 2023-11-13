@@ -157,7 +157,7 @@ class ParameterManager(Tool):
     def __init__(self):
         Tool.__init__(self, "before_handler", self.load, priority=10)
 
-    def __check_decode(params_dict, key, value):
+    def __check_decode(self, params_dict, key, value):
         """
         Helper function for code reuse when parsing arguments
         """
@@ -204,16 +204,4 @@ class ParameterManager(Tool):
             self.__check_decode(req.params, k, req.params[k])
             if isinstance(req.params[k], list):
                 for i in range(len(req.params[k])):
-                    is_unicode = True
-                    try:
-                        self.__check_decode(req.params, k, req.params[k][i])
-                    except UnicodeError:
-                        is_unicode = False
-                    if is_unicode:
-                        try:
-                            req.params[k][i] = str(req.params[k][i])
-                        except Exception as e:
-                            _logerr(
-                                "FAILURE: cannot convert unicode value: "
-                                + "".join([hex(ord(c)) for c in req.params[k][i]])
-                            )
+                    self.__check_decode(req.params[k], i, req.params[k][i])
