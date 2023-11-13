@@ -27,7 +27,9 @@ def regression_test(directory):
             sample = pieces[0]
             expected_size = pieces[1].rstrip()
             command = command_raw % (sample, directory)
-            out = subprocess.check_output([command], shell=True).rstrip()
+            out = (
+                subprocess.check_output([command], shell=True).decode("utf-8").rstrip()
+            )
             match = expected_size == out
             print(
                 "Sample %s. Expected line count: %s, actual line count: %s. %s"
