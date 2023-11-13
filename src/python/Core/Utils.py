@@ -157,6 +157,25 @@ class ParameterManager(Tool):
     def __init__(self):
         Tool.__init__(self, "before_handler", self.load, priority=10)
 
+    def __check_decode(params_dict, key, value):
+        """
+        Helper function for code reuse when parsing arguments
+        """
+        is_unicode = True
+        if isinstance(value, bytes):
+            try:
+                value.decode("utf-8")
+            except UnicodeError:
+                is_unicode = False
+                if is_unicode:
+                    try:
+                        params_dict[key] = str(value)
+                    except Exception as e:
+                        _logerr(
+                            "FAILURE: cannot convert unicode value: "
+                            + "".join([hex(ord(c)) for c in value])
+                        )
+
     def load(self):
         req = request
 
@@ -182,25 +201,12 @@ class ParameterManager(Tool):
             # Don't convert Multipart data.
             if isinstance(req.params[k], Part):
                 continue
-            is_unicode = True
-            if isinstance(req.params[k], bytes):
-                try:
-                    req.params[k].decode("utf-8")
-                except UnicodeError:
-                    is_unicode = False
-            if is_unicode:
-                try:
-                    req.params[k] = str(req.params[k])
-                except Exception as e:
-                    _logerr(
-                        "FAILURE: cannot convert unicode value: "
-                        + "".join([hex(ord(c)) for c in req.params[k]])
-                    )
+            self.__check_decode(req.params, k, req.params[k])
             if isinstance(req.params[k], list):
                 for i in range(len(req.params[k])):
                     is_unicode = True
                     try:
-                        req.params[k][i].decode()
+                        self.__check_decode(req.params, k, req.params[k][i])
                     except UnicodeError:
                         is_unicode = False
                     if is_unicode:
