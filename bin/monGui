@@ -7,7 +7,7 @@ import sys, os, os.path
 import cherrypy, logging, threading, time, socket
 from cherrypy._cplogging import LogManager
 from cherrypy.lib import profiler
-from subprocess import Popen, PIPE
+from logging import handlers
 from glob import glob
 from signal import *
 
@@ -27,23 +27,6 @@ if err != None:
     sys.stderr.write(err)
     sys.exit(1)
 
-# TODO: Make it work without rotatelogs
-# Redirect all output to the logging daemon.
-# with open("/dev/null", "w") as devnull:
-#     logger = Popen(
-#         ["logrotate", cfg.logFile, "86400"],
-#         stdin=PIPE,
-#         stdout=devnull,
-#         stderr=devnull,
-#         bufsize=1,
-#         close_fds=True,
-#         shell=False,
-#     )
-#     os.dup2(logger.stdin.fileno(), sys.stdout.fileno())
-#     os.dup2(logger.stdin.fileno(), sys.stderr.fileno())
-#     os.dup2(devnull.fileno(), sys.stdin.fileno())
-#     logger.stdin.close()
-#     devnull.close()
 
 # Fork.  The child always exits the loop and executes the code below
 # to run the server proper.  The parent monitors the child, and if
@@ -152,10 +135,24 @@ def mytime():
 
 
 # Custom logger which outputs more, and more useful, information.
+# Forward both access and error logs to the cfg.logFile. Don't output
+# to stdout.
+# https://stackoverflow.com/questions/1601665/python-cherrypy-access-log-rotation
 class DQMLogger(LogManager):
     def __init__(self, *args, **kwargs):
         self.host = socket.gethostname()
         LogManager.__init__(self, *args, **kwargs)
+        self.error_file = ""
+        self.access_file = ""
+        self.screen = False
+        # Make a new RotatingFileHandler for the error log. Rotate each day.
+        h = handlers.TimedRotatingFileHandler(cfg.logFile, when="D", interval=1)
+        h.setLevel(logging.INFO)
+        h.setFormatter(cherrypy._cplogging.logfmt)
+
+        # Same handler for both error and access logs
+        self.error_log.addHandler(h)
+        self.access_log.addHandler(h)
 
     def access(self):
         request = cherrypy.request
