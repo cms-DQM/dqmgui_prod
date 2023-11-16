@@ -5,7 +5,7 @@ import time
 import sys
 import json
 from traceback import print_exc
-from utils.logging import logme
+from Monitoring.Core.Utils import logme
 from urllib import parse, request, error
 from socket import socket, AF_INET, SOCK_STREAM, gethostname
 from subprocess import Popen, PIPE

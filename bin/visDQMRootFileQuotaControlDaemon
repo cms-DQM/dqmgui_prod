@@ -2,7 +2,7 @@
 
 import os, time, re, sys, errno
 from traceback import print_exc
-from utils.logging import logme
+from Monitoring.Core.Utils import logme
 from glob import glob
 
 

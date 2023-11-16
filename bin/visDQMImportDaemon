@@ -3,7 +3,7 @@
 import os, os.path, time, sys, argparse, subprocess, functools
 from subprocess import Popen, PIPE
 from traceback import print_exc
-from utils.logging import logme
+from Monitoring.Core.Utils import logme
 from datetime import datetime, timedelta
 from glob import glob
 from fcntl import lockf, LOCK_EX, LOCK_UN

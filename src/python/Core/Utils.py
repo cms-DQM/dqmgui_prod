@@ -1,9 +1,23 @@
-import re, time, calendar, logging
+import os, re, time, calendar, logging
 from cherrypy import log, Tool, request
 from cherrypy._cpreqbody import Part
+from datetime import datetime
+import inspect
 
 RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
 RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
+
+logger = logging.getLogger(__name__)
+h = logging.StreamHandler()
+logger.addHandler(h)
+logger.setLevel(logging.INFO)
+
+
+def logme(msg: str, *args, level=logging.INFO):
+    procid = "[%s/%d]" % (inspect.stack()[1].filename.rsplit("/", 1)[-1], os.getpid())
+    if "ERROR" in msg:
+        level = logging.ERROR
+    logger.log(msg=f"{datetime.now()} {procid} " + msg % args, level=level)
 
 
 # Logging methods.

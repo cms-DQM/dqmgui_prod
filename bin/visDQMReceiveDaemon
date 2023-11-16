@@ -2,7 +2,7 @@
 
 import os, os.path, time, sys, re, hashlib, functools
 from traceback import print_exc
-from utils.logging import logme
+from Monitoring.Core.Utils import logme
 from tempfile import mkstemp
 from stat import *
 from Monitoring.DQM import visDQMUtils

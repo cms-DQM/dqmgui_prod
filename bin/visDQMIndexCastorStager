@@ -3,7 +3,7 @@
 import os, time, sys, argparse
 from subprocess import Popen, PIPE
 from traceback import print_exc
-from utils.logging import logme
+from Monitoring.Core.Utils import logme
 from datetime import datetime, timedelta
 from glob import glob
 from socket import gethostname
