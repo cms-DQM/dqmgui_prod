@@ -2,10 +2,9 @@
 
 import os, time, re, sys, errno
 from traceback import print_exc
-from datetime import datetime
+from utils.logging import logme
 from glob import glob
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
@@ -33,9 +32,6 @@ lastRefresh = time.time()
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 # This insert method is requiring that the container receiving the

@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import re
-import os
 import time
 import sys
 import json
 from traceback import print_exc
-from datetime import datetime
+from utils.logging import logme
 from urllib import parse, request, error
 from socket import socket, AF_INET, SOCK_STREAM, gethostname
 from subprocess import Popen, PIPE
@@ -42,9 +41,6 @@ from subprocess import Popen, PIPE
 # and provides an ability to disable alarms for chosen plots.
 # This tool queries the API of the visDQMSoundAlarmManager for the list
 # of disabled plots before sending the alarms.
-
-# TODO: Is this needed?
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "wb", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
@@ -87,9 +83,6 @@ WAITTIME = 30
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 # Short hand to send XML message to CMS-WOW

@@ -2,12 +2,11 @@
 
 import os, time, sys
 from glob import glob
-from datetime import datetime
+from utils.logging import logme
 from traceback import print_exc
 from subprocess import Popen, PIPE
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # Command line parameters
 DROPBOX = sys.argv[1]  # DROPBOX for partial indexes
@@ -29,9 +28,6 @@ AVGITIME = 4 * 60  # Average Time to register a run
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def runme(cmd, *args, **keys):

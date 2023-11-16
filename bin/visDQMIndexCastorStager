@@ -3,11 +3,11 @@
 import os, time, sys, argparse
 from subprocess import Popen, PIPE
 from traceback import print_exc
+from utils.logging import logme
 from datetime import datetime, timedelta
 from glob import glob
 from socket import gethostname
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 parser = argparse.ArgumentParser(
     description="Agent that copies the backup of " "the index to CASTOR."
@@ -50,11 +50,6 @@ if not args.rsynclists:
     args.rsynclists = args.INDEX + "_rsynclists"
 
 # Method definitions:
-
-
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def current_umask():

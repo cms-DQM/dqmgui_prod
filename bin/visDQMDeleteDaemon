@@ -2,11 +2,10 @@
 
 import re, os, time, sys
 from traceback import print_exc
-from datetime import datetime
+from utils.logging import logme
 from urllib import request
 from fcntl import lockf, LOCK_EX, LOCK_UN
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 # --------------------------------------------------------------------
 # Command line parameters
@@ -37,9 +36,6 @@ lastRefresh = time.time()
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 # Write chache to disk.

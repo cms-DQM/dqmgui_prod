@@ -2,12 +2,11 @@
 
 import os, os.path, time, sys, re, hashlib, functools
 from traceback import print_exc
-from datetime import datetime
+from utils.logging import logme
 from tempfile import mkstemp
 from stat import *
 from Monitoring.DQM import visDQMUtils
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 FILEREPO = sys.argv[2]  # Final file repository of original DQM files.
@@ -34,11 +33,6 @@ else:
 # --------------------------------------------------------------------
 def cmp(a, b):
     return (a > b) - (a < b)
-
-
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def warnPath(info, path, msg):

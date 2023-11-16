@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 
 import os, time, sys, pickle
-from datetime import datetime
+from utils.logging import logme
 from glob import glob
 from math import sqrt
 from tempfile import mkstemp
 from traceback import print_exc
 from socket import gethostname
 from subprocess import Popen, PIPE
-
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 
@@ -38,9 +36,6 @@ STATE_PICKLE_FILENAME = "state.pickle"
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def runme(cmd, *args, **keys):

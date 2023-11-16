@@ -3,12 +3,11 @@
 import os, time, sys, re, pickle
 from subprocess import Popen, PIPE
 from traceback import print_exc
-from datetime import datetime
 from tempfile import mkstemp
 from math import sqrt
 from glob import glob
+from utils.logging import logme
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").
 ZIPREPO = sys.argv[2]  # Zip file repository.
@@ -29,9 +28,6 @@ NEW_DICT_PICKLE_FILENAME = "new.pickle"
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def runme(cmd, *args, **keys):

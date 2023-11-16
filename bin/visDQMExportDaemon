@@ -2,13 +2,13 @@
 
 import os, os.path, sys
 from time import strftime, localtime, sleep, time
+from utils.logging import logme
 from tempfile import mkstemp
 from glob import glob
 from threading import Thread, Lock, active_count
 import subprocess, re
 import pickle as pickle
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
 
 INDEX = sys.argv[1]  # Location of the DQM GUI index from which we export samples.
 WORKDIR = sys.argv[
@@ -43,14 +43,14 @@ MAXDATTIME = (
 
 
 # --------------------------------------------------------------------
-def logme(msg, *args):
-    procid = "[%s/%d]" % (OWNNAME, os.getpid())
-    sys.stdout.write(
-        "[%s/%s]" % (OWNNAME, os.getpid())
-        + strftime("%b %d %H:%M:%S ", localtime(time()))
-        + "".join(msg % args)
-        + "\n"
-    )
+# def logme(msg, *args):
+#     procid = "[%s/%d]" % (OWNNAME, os.getpid())
+#     sys.stdout.write(
+#         "[%s/%s]" % (OWNNAME, os.getpid())
+#         + strftime("%b %d %H:%M:%S ", localtime(time()))
+#         + "".join(msg % args)
+#         + "\n"
+#     )
 
 
 class Sample:

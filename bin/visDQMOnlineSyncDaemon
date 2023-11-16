@@ -19,12 +19,11 @@ from time import time, strptime, sleep
 from optparse import OptionParser
 from urllib import parse
 from calendar import timegm
-from datetime import datetime
+from utils.logging import logme
 from traceback import print_exc
 from tempfile import mkstemp
 from stat import *
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 # Directory where we receive input ("drop box"). Not used.
 DROPBOX = None
@@ -68,12 +67,6 @@ nfound = 0
 
 # Number of files copied on this round.
 ncopied = 0
-
-
-def logme(msg, *args):
-    """Generate agent log message."""
-    procid = "[%s/%d]" % (__file__.rsplit("/", 1)[-1], os.getpid())
-    print(datetime.now(), procid, msg % args)
 
 
 def myumask():
