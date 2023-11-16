@@ -4,8 +4,6 @@ import sys, socket
 from binascii import hexlify
 from struct import pack, unpack
 
-# sys.stdout = os.fdopen(sys.stdout.fileno(), "w", 0)
-
 MESSAGES = {
     "HELLO": 0,
     "UPDATE_ME": 1,
