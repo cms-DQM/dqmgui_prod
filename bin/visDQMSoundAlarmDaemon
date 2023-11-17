@@ -113,15 +113,14 @@ def send_email_msg(msg):
             "Sending email to %s with following message:\n%s" % (EMAIL_ADDRESSES, msg)
         )
         process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
-        process.stdin.write("To: %s\n" % EMAIL_ADDRESSES)
+        process.stdin.write(f"To: {EMAIL_ADDRESSES}\n".encode())
         process.stdin.write(
-            "Subject: Message from the visDQMSoundAlarmDaemon on "
-            "%s at P5\n" % gethostname()
+            f"Subject: Message from the visDQMSoundAlarmDaemon on {gethostname()} at P5\n".encode()
         )
-        process.stdin.write("\n")  # blank line separating headers from body
-        process.stdin.write("%s\n\n" % msg)
+        process.stdin.write("\n".encode())  # blank line separating headers from body
+        process.stdin.write(f"{msg}\n\n".encode())
         process.stdin.write(
-            "The logs should be here: /data/srv/logs/dqmgui/" "online/\n"
+            f"The logs should be here: /data/srv/logs/dqmgui/online/\n".encode()
         )
         process.stdin.close()
         returncode = process.wait()
