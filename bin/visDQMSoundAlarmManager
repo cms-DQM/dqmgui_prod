@@ -89,7 +89,7 @@ class CustomRequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(TEMPLATE.replace("$CONTENT$", content))
+            self.wfile.write(TEMPLATE.replace("$CONTENT$", content).encode())
 
         # Return all enabled MEs
         elif self.path == "/disabled":
@@ -100,12 +100,12 @@ class CustomRequestHandler(http.server.BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(json.dumps(result))
+            self.wfile.write(json.dumps(result).encode())
 
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write("<h1>404 Not Found</h1>")
+            self.wfile.write("<h1>404 Not Found</h1>".encode())
 
     def do_POST(self):
         # Enable given ME
@@ -114,7 +114,7 @@ class CustomRequestHandler(http.server.BaseHTTPRequestHandler):
             DISABLED_MES.pop(me, None)
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(me)
+            self.wfile.write(me.encode())
 
         # Disable given ME
         elif self.path.startswith("/disable?me="):
@@ -122,17 +122,17 @@ class CustomRequestHandler(http.server.BaseHTTPRequestHandler):
             DISABLED_MES[me] = True
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(me)
+            self.wfile.write(me.encode())
 
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write("<h1>404 Not Found</h1>")
+            self.wfile.write("<h1>404 Not Found</h1>".encode())
 
     def do_HEAD(self):
         self.send_response(501)
         self.end_headers()
-        self.wfile.write("<h1>501 Unsupported method</h1>")
+        self.wfile.write("<h1>501 Unsupported method</h1>".encode())
 
     def get_gui_data(self):
         url = "%s%s" % (GUI_URL, parse.quote(ERRORS_FOLDER))
@@ -178,7 +178,7 @@ TEMPLATE = """
 		tr:nth-child(even) {
 			background-color: #f1f1f1;
 		}
-        
+
         .danger {
             color: #ff4242;
         }
@@ -192,7 +192,7 @@ TEMPLATE = """
 <body>
 	<h3>Enable/disable DQM sound alarms at P5</h3>
 
-    <p>You can use this tool to enable/disable P5 sound alarms for certain DQM plot in the Errors folder of the DQM GUI. 
+    <p>You can use this tool to enable/disable P5 sound alarms for certain DQM plot in the Errors folder of the DQM GUI.
     If the alarm for a plot is <i>enabled</i>, it <i>will play a sound alarm</i> in the control room.</p>
 
     <p>All alarms will switch to enabled state after the restart of the DQM GUI.</p>
