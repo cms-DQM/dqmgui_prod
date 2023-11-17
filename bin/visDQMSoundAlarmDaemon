@@ -181,7 +181,7 @@ def run_daemon():
     remindersSent = 0
 
     noRun = True
-    alarms = {}
+    activeURLErrors = 0
 
     knownAlarms = set()
     while True:
@@ -201,7 +201,6 @@ def run_daemon():
             ## Detect No run state
             if noRun == False and len(state["contents"]) <= 1:
                 noRun = True
-                alarms = {}
                 lastMessage = 0
 
             if noRun and len(state["contents"]) > 1:
