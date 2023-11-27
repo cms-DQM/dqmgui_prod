@@ -27,23 +27,23 @@ parser.add_argument(
     "--next",
     nargs="+",
     default=[],
-    help="Directories for " "the next agents in chain that pick up the root files.",
+    help="Directories for the next agents in chain that pick up the root files.",
 )
 parser.add_argument(
     "--rsync",
     action="store_true",
-    help="Use rsync to make a " "backup of the index at regular intervals.",
+    help="Use rsync to make a backup of the index at regular intervals.",
 )
 parser.add_argument(
     "--time",
     default="05:00",
-    help="Time in day (HH:MM) to " "make the backup. Default = 05:00",
+    help="Time in day (HH:MM) to make the backup. Default = 05:00",
 )
 parser.add_argument(
     "--days",
     default=1,
     type=int,
-    help="Amount of days between" " each backup. Default = 1",
+    help="Amount of days between each backup. Default = 1",
 )
 parser.add_argument(
     "--email",
@@ -53,7 +53,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--backupindex",
-    help="Location of the BACKUP DQM GUI index" ". Default = <INDEX>_backup",
+    help="Location of the BACKUP DQM GUI index. Default = <INDEX>_backup",
 )
 parser.add_argument(
     "--rsynclists",

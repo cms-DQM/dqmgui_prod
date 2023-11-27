@@ -10,7 +10,7 @@ from socket import gethostname
 
 
 parser = argparse.ArgumentParser(
-    description="Agent that copies the backup of " "the index to CASTOR."
+    description="Agent that copies the backup of the index to CASTOR."
 )
 parser.add_argument("DROPBOX", help='Directory where we receive input ("drop box")')
 parser.add_argument("INDEX", help="Location of the primary DQM GUI index.")
