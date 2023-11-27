@@ -145,8 +145,8 @@ class DQMLogger(LogManager):
         self.error_file = ""
         self.access_file = ""
         self.screen = False
-        # Make a new RotatingFileHandler for the error log. Rotate each day.
-        h = handlers.TimedRotatingFileHandler(cfg.logFile, when="D", interval=1)
+        # Make a new FileHandler for the error log. Rotation will be handled externally.
+        h = logging.FileHandler(filename=cfg.logFile)
         h.setLevel(logging.INFO)
         h.setFormatter(cherrypy._cplogging.logfmt)
 
