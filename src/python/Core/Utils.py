@@ -1,4 +1,4 @@
-import os, re, time, calendar, logging
+import os, re, time, calendar, logging, sys
 from cherrypy import log, Tool, request
 from cherrypy._cpreqbody import Part
 from datetime import datetime
@@ -8,7 +8,7 @@ RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
 RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
 
 logger = logging.getLogger(__name__)
-h = logging.StreamHandler()
+h = logging.StreamHandler(stream=sys.stderr)
 logger.addHandler(h)
 logger.setLevel(logging.INFO)
 
