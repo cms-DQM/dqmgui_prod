@@ -7,7 +7,6 @@ import sys, os, os.path
 import cherrypy, logging, threading, time, socket
 from cherrypy._cplogging import LogManager
 from cherrypy.lib import profiler
-from logging import handlers
 from glob import glob
 from signal import *
 
