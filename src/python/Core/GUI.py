@@ -829,24 +829,23 @@ class Server:
         shortUrl = longUrl
 
         try:
-            connection = client.HTTPSConnection("tinyurl.com")
-            connection.request("GET", "/api-create.php?url=%s" % longUrl)
+            # Add a timeout to the request to tinyurl, as it takes ages to fail
+            # in case we don't have acess to the outside world (see: P5).
+            connection = client.HTTPSConnection("tinyurl.com", timeout=3.0)
+            connection.request("GET", f"/api-create.php?url={longUrl}")
             response = connection.getresponse()
 
             if response.status == 200:
                 shortUrl = response.read()
             else:
                 log(
-                    "WARNING: urlshortener returned status: %s for url: %s"
-                    % (response.status, longUrl),
+                    f"WARNING: urlshortener returned status: {response.status} for url: {longUrl}",
                     severity=logging.WARNING,
                 )
 
             connection.close()
-        except:
-            log(
-                "WARNING: unable to shorten URL: %s" % longUrl, severity=logging.WARNING
-            )
+        except Exception as e:
+            log(f"WARNING: unable to shorten URL: {longUrl}. Reason: {repr(e)}")
 
         return (
             '{"id": "%s"}' % shortUrl.decode("utf-8")
