@@ -50,10 +50,10 @@ def runme(cmd, *args, **keys):
         logme(
             "ERROR: Command execution failed ('%s') with error message: %s",
             fcmd,
-            sc_stderr.replace("\n", "\016"),
+            sc_stderr.decode("utf-8").replace("\n", "\016"),
         )
 
-    return (scall.returncode, sc_stdout, sc_stderr)
+    return (scall.returncode, sc_stdout.decode("utf-8"), sc_stderr.decode("utf-8"))
 
 
 def sendmail(body="Hello from visDQMZipCastorVerifier"):

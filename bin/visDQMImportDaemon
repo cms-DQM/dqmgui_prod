@@ -284,13 +284,17 @@ def doBackupUsingRsync(source, target):
     (rsync_stdout, rsync_stderr) = system_call.communicate()
     if system_call.returncode == 0:
         # The rsync output is logged together with the other import daemon logs.
-        logme(rsync_stdout)
+        logme(rsync_stdout.decode("utf-8"))
         # We parse the output:
-        list_of_files = parse_rsync_output(rsync_stdout)
+        list_of_files = parse_rsync_output(rsync_stdout.decode("utf-8"))
         save_list_of_files(list_of_files, rsync_tag)
         put_link_in_dropbox(rsync_tag)
     else:
-        logme("ERROR: Rsync failed!\n%s\n%s", rsync_stdout, rsync_stderr)
+        logme(
+            "ERROR: Rsync failed!\n%s\n%s",
+            rsync_stdout.decode("utf-8"),
+            rsync_stderr.decode("utf-8"),
+        )
 
 
 def parse_rsync_output(rsync_output):
