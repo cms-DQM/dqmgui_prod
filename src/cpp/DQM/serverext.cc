@@ -1260,8 +1260,8 @@ public:
       lrunuke(cache_[i]);
 
     // Initialise requested number of sub-processes, all feeding to one logger.
-    std::string logout(logdir + "/renderlog-%Y%m%d.log");
-    logger_.run(Argz("rotatelogs", logout.c_str(), "86400").argz(),
+    std::string logout(logdir + "/renderlog.log");
+    logger_.run(Argz("tee", "--append", logout.c_str()).argz(),
                 SubProcess::Write | SubProcess::NoCloseError |
                     SubProcess::Search,
                 &logpipe_);
