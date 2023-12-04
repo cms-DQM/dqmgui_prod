@@ -32,3 +32,4 @@ __pycache__/
 *.so
 .idea/
 settings.json
+*.egg-info
