@@ -283,7 +283,10 @@ if action == "restart" or action == "start":
             os.makedirs(dir + "/sessions")
         if os.path.exists(dir + "/stop"):
             os.remove(dir + "/stop")
-        start("%spython %s %s" % (cmdpfx, inpath("monGui"), cfgfile))
+        start(
+            "%spython %s %s > %s 2>&1"
+            % (cmdpfx, inpath("monGui"), cfgfile, cfg.logFile)
+        )
 
 # Rebuilding just redoes the plug-in but nothing else.
 if action == "rebuild":

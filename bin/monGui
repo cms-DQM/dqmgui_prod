@@ -270,7 +270,7 @@ cherrypy.config.update({"server.socket_queue_size": optQueue})
 cherrypy.config.update({"server.thread_pool": optThreads})
 cherrypy.config.update({"tools.proxy.on": True, "tools.proxy.base": cfg.localBase})
 cherrypy.config.update({"tools.time.on": True})
-cherrypy.config.update({"engine.autoreload_on": False})
+cherrypy.config.update({"engine.autoreload.on": False})
 
 # Run. Override signal handlers after CherryPy has itself started and
 # installed its own handlers. To achieve this we need to start the
