@@ -284,7 +284,7 @@ if action == "restart" or action == "start":
         if os.path.exists(dir + "/stop"):
             os.remove(dir + "/stop")
         start(
-            "%spython %s %s > %s 2>&1"
+            "%spython %s %s >> %s 2>&1"
             % (cmdpfx, inpath("monGui"), cfgfile, cfg.logFile)
         )
 
