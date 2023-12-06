@@ -1413,7 +1413,7 @@ public:
 private:
   static std::ostream &logme(void) {
     Time now = Time::current();
-    return std::cerr << now.format(true, "%Y-%m-%d %H:%M:%S.")
+    return std::cout << now.format(true, "%Y-%m-%d %H:%M:%S.")
                      << now.nanoformat(3, 3) << " visDQMRenderLink[" << getpid()
                      << '/' << pthread_self() << "]: ";
   }
