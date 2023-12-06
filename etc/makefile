@@ -18,7 +18,7 @@ LDFLAGS      = $(LDFLAGS_$(PLATFORM)) -L. $(shell $(PYTHON_CONFIG) --ldflags --e
 
 CXXFLAGS     = -D_GNU_SOURCE -D_DARWIN_C_SOURCE -DWITHOUT_CMS_FRAMEWORK=1 -D__STDC_LIMIT_MACROS \
                -D__STDC_FORMAT_MACROS -U__DEPRECATED -fPIC -g -O2 -W -Wall -Wno-long-long \
-               -pedantic -std=c++17 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS)) \
+               -pedantic -std=c++14 -Wno-unused-local-typedefs -I$(SRCDIR) $(patsubst %,-I%,$(INCLUDE_DIRS)) \
                $(shell $(PYTHON_CONFIG) --cflags --includes --embed)
 ROOTC_LIBS   = -L/usr/lib64/root -lCore -lImt -lRIO -lNet -lHist -lROOTVecOps -lTree \
                 -lRint -lMatrix -lMathCore -lThread -lMultiProc \
