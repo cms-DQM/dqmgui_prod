@@ -21,6 +21,7 @@
 
 #include "classlib/iobase/File.h"
 #include "classlib/iobase/Filename.h"
+#include "classlib/iobase/IOFlags.h"
 #include "classlib/iobase/IOStatus.h"
 #include "classlib/iobase/LocalSocket.h"
 #include "classlib/iobase/SubProcess.h"
@@ -1233,8 +1234,7 @@ class VisDQMRenderLink {
   bool debug_;
   bool quiet_;
   std::string plugin_;
-  Pipe logpipe_;
-  SubProcess logger_;
+  File logout_;
   std::vector<Server> servers_;
   Image cache_[IMAGE_CACHE_SIZE];
   pthread_mutex_t lock_;
@@ -1260,11 +1260,9 @@ public:
       lrunuke(cache_[i]);
 
     // Initialise requested number of sub-processes, all feeding to one logger.
-    std::string logout(logdir + "/renderlog.log");
-    logger_.run(Argz("tee", "--append", logout.c_str()).argz(),
-                SubProcess::Write | SubProcess::NoCloseError |
-                    SubProcess::Search,
-                &logpipe_);
+    logout_.open(logdir + "/renderlog.log", IOFlags::OpenWrite |
+                                                IOFlags::OpenAppend |
+                                                IOFlags::OpenCreate);
 
     servers_.resize(nproc);
     for (int i = 0; i < nproc; ++i) {
@@ -1429,10 +1427,10 @@ private:
                                 (debug_ ? "--debug" : 0),
                                 0};
     srv.proc.reset(new SubProcess(serverArgz,
-                                  SubProcess::First | SubProcess::Search |
+                                  SubProcess::One | SubProcess::Search |
                                       SubProcess::NoCloseOutput |
                                       SubProcess::NoCloseError,
-                                  null, logpipe_.sink(), logpipe_.sink()));
+                                  null, &logout_, &logout_));
     srv.checkme = true;
   }
 
