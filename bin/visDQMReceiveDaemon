@@ -214,7 +214,7 @@ def finaliseOneFile(info):
   checkprog = "%s/visDQMVerify%s.C" % (CHECKDIR, checklevel)
   check = os.popen("exec perl -e 'alarm(30); exec qw(root -n -l -b -q %s %s)' 2>&1 >/dev/null"
                 % (path, checkprog)).read().rstrip()
-  if not check.startswith("VERIFY: Good to go"):
+  if "VERIFY: Good to go" not in check:
     warnPath(info, path, check)
     return False
 
