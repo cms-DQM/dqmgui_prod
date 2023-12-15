@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os, os.path, time, sys, re, hashlib, functools
+import logging
 from traceback import print_exc
 from Monitoring.Core.Utils import logme
 from tempfile import mkstemp
@@ -243,15 +244,15 @@ def finaliseOneFile(info):
     if "online_data" in info["class"] and not info["subsystem"]:
         checklevel = "Strict"
     checkprog = "%s/visDQMVerify%s.C" % (CHECKDIR, checklevel)
-    check = (
-        os.popen(
-            "exec perl -e 'alarm(30); exec qw(root -n -l -b -q %s %s)' 2>&1 >/dev/null"
-            % (path, checkprog)
-        )
-        .read()
-        .rstrip()
+    # Run the ROOT verifier and get only stderr, discard stdout.
+    cmd = (
+        "exec perl -e 'alarm(30); exec qw(root -n -l -b -q %s %s)' 2>&1 >/dev/null"
+        % (path, checkprog)
     )
-    if not check.startswith("VERIFY: Good to go"):
+    logme(f"Running: {cmd}", level=logging.DEBUG)
+    check = os.popen(cmd).read().rstrip()
+    # Ignore several errors from newer ROOT files
+    if not "VERIFY: Good to go" in check:
         warnPath(info, path, check)
         return False
 
