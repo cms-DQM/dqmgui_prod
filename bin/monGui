@@ -275,7 +275,10 @@ cherrypy.config.update({"engine.autoreload.on": False})
 # Run. Override signal handlers after CherryPy has itself started and
 # installed its own handlers. To achieve this we need to start the
 # server in non-blocking, fiddle, then ask it to block.
-cherrypy.log("INFO: Starting server in %s" % cfg.serverDir, severity=logging.INFO)
+cherrypy.log(
+    f"INFO: Starting server in {cfg.serverDir}, serving at {cfg.baseUrl}",
+    severity=logging.INFO,
+)
 cherrypy.engine.start()
 signal(SIGHUP, myreload)
 signal(SIGTERM, myterminate)
