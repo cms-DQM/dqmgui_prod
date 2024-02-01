@@ -255,7 +255,7 @@ buildCompleteStreamerInfo(std::string &data)
       "TH1F", "TH1S", "TH1D", "TH1I",
       "TH2F", "TH2S", "TH2D", "TH2I",
       "TH3F", "TH3S", "TH3D", "TH3I",
-      "TProfile", "TProfile2D", 0
+      "TH2Poly", "TProfile", "TProfile2D", 0
     };
 
   int i = 0;

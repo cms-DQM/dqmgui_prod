@@ -135,6 +135,18 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     if (nbins != nbinsref) return -1;
   } 
 
+  //-- TH2Poly
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2Poly)
+  { 
+    nbins = me->getTH2Poly()->GetXaxis()->GetNbins() *
+            me->getTH2Poly()->GetYaxis()->GetNbins();
+    nbinsref = me->getRefTH2Poly()->GetXaxis()->GetNbins() *
+               me->getRefTH2Poly()->GetYaxis()->GetNbins();
+    h = me->getTH2Poly(); // access Test histo
+    ref_ = me->getRefTH2Poly(); //access Ref hiso 
+    if (nbins != nbinsref) return -1;
+  } 
+
   //-- TH3
   else if (me->kind()==MonitorElement::DQM_KIND_TH3F)
   { 

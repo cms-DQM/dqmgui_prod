@@ -22,26 +22,27 @@
 class DQMNet
 {
 public:
-  static const uint32_t DQM_PROP_TYPE_MASK	 = 0x000000ff;
-  static const uint32_t DQM_PROP_TYPE_SCALAR	 = 0x0000000f;
-  static const uint32_t DQM_PROP_TYPE_INVALID	 = 0x00000000;
-  static const uint32_t DQM_PROP_TYPE_INT	 = 0x00000001;
-  static const uint32_t DQM_PROP_TYPE_REAL	 = 0x00000002;
-  static const uint32_t DQM_PROP_TYPE_STRING	 = 0x00000003;
-  static const uint32_t DQM_PROP_TYPE_TH1F	 = 0x00000010;
-  static const uint32_t DQM_PROP_TYPE_TH1S	 = 0x00000011;
-  static const uint32_t DQM_PROP_TYPE_TH1D = 0x00000012;
-  static const uint32_t DQM_PROP_TYPE_TH1I = 0x00000013;
-  static const uint32_t DQM_PROP_TYPE_TH2F = 0x00000020;
-  static const uint32_t DQM_PROP_TYPE_TH2S = 0x00000021;
-  static const uint32_t DQM_PROP_TYPE_TH2D = 0x00000022;
-  static const uint32_t DQM_PROP_TYPE_TH2I = 0x00000023;
-  static const uint32_t DQM_PROP_TYPE_TH3F = 0x00000030;
-  static const uint32_t DQM_PROP_TYPE_TH3S	 = 0x00000031;
-  static const uint32_t DQM_PROP_TYPE_TH3D	 = 0x00000032;
-  static const uint32_t DQM_PROP_TYPE_TPROF	 = 0x00000040;
-  static const uint32_t DQM_PROP_TYPE_TPROF2D	 = 0x00000041;
-  static const uint32_t DQM_PROP_TYPE_DATABLOB	 = 0x00000050;
+  static const uint32_t DQM_PROP_TYPE_MASK     = 0x000000ff;
+  static const uint32_t DQM_PROP_TYPE_SCALAR   = 0x0000000f;
+  static const uint32_t DQM_PROP_TYPE_INVALID  = 0x00000000;
+  static const uint32_t DQM_PROP_TYPE_INT      = 0x00000001;
+  static const uint32_t DQM_PROP_TYPE_REAL     = 0x00000002;
+  static const uint32_t DQM_PROP_TYPE_STRING   = 0x00000003;
+  static const uint32_t DQM_PROP_TYPE_TH1F     = 0x00000010;
+  static const uint32_t DQM_PROP_TYPE_TH1S     = 0x00000011;
+  static const uint32_t DQM_PROP_TYPE_TH1D     = 0x00000012;
+  static const uint32_t DQM_PROP_TYPE_TH1I     = 0x00000013;
+  static const uint32_t DQM_PROP_TYPE_TH2F     = 0x00000020;
+  static const uint32_t DQM_PROP_TYPE_TH2S     = 0x00000021;
+  static const uint32_t DQM_PROP_TYPE_TH2D     = 0x00000022;
+  static const uint32_t DQM_PROP_TYPE_TH2I     = 0x00000023;
+  static const uint32_t DQM_PROP_TYPE_TH2Poly  = 0x00000024;
+  static const uint32_t DQM_PROP_TYPE_TH3F     = 0x00000030;
+  static const uint32_t DQM_PROP_TYPE_TH3S     = 0x00000031;
+  static const uint32_t DQM_PROP_TYPE_TH3D     = 0x00000032;
+  static const uint32_t DQM_PROP_TYPE_TPROF    = 0x00000040;
+  static const uint32_t DQM_PROP_TYPE_TPROF2D  = 0x00000041;
+  static const uint32_t DQM_PROP_TYPE_DATABLOB = 0x00000050;
   
   static const uint32_t DQM_PROP_REPORT_MASK	 = 0x00000f00;
   static const uint32_t DQM_PROP_REPORT_CLEAR	 = 0x00000000;
