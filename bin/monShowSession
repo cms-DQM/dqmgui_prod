@@ -1,9 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import sys, cPickle
+import sys, pickle
 
 for f in sys.argv[1:]:
-  print "%s:" % f
-  data = cPickle.load(file(f, "r"))
-  for k in sorted(data.keys()):
-    print "  %-15s %s" % (k, repr(data[k]))
+    print("%s:" % f)
+    with open(f, "rb") as _f:
+        data = pickle.load(_f)
+    for k in sorted(data.keys()):
+        print("  %-15s %s" % (k, repr(data[k])))

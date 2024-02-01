@@ -31,7 +31,7 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 apidoc:
-	python generate_modules.py -f -d $(PROJECT) -s rst $${PYTHONPATH%%:*}/Monitoring
+	python3 generate_modules.py -f -d $(PROJECT) -s rst $${PYTHONPATH%%:*}/Monitoring
 	cp references.rst $(PROJECT)
 
 html: apidoc
