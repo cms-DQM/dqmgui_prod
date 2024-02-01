@@ -251,7 +251,6 @@ def finaliseOneFile(info):
     )
     logme(f"Running: {cmd}", level=logging.DEBUG)
     check = os.popen(cmd).read().rstrip()
-    # Ignore several errors from newer ROOT files
     if not check.startswith("VERIFY: Good to go"):
         warnPath(info, path, check)
         return False
