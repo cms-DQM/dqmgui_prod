@@ -2,7 +2,7 @@
 
 import os, time, sys, re
 from traceback import print_exc
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from tempfile import mkstemp
 from glob import glob
 

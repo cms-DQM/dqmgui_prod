@@ -1,6 +1,6 @@
 import re, time, socket
 from urllib import quote_plus, request, parse
-from Monitoring.Core.Utils import _logwarn
+from Monitoring.Core.Utils.Common import _logwarn
 from threading import Thread, Lock
 from cherrypy import HTTPError, engine
 from copy import deepcopy

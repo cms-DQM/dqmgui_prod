@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os, time, sys, pickle
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from glob import glob
 from math import sqrt
 from tempfile import mkstemp
@@ -57,6 +57,7 @@ def runme(cmd, *args, **keys):
 
 
 def sendmail(body="Hello from visDQMZipCastorVerifier"):
+    # TODO: encode() when Offline DQMGUI updates to python3
     scall = Popen("%s -t" % SENDMAIL, shell=True, stdin=PIPE)
     scall.stdin.write("To: %s\n" % EMAIL)
     scall.stdin.write("Subject: Problem verifying file transfer to EOS\n")

@@ -3,7 +3,7 @@
 import os, time, sys, argparse
 from subprocess import Popen, PIPE
 from traceback import print_exc
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from datetime import datetime, timedelta
 from glob import glob
 from socket import gethostname
@@ -293,6 +293,7 @@ def executeCommand(command):
 # Alert email addresses given as parameter about a failure of the process.
 def alertBySendingEmail(errorText):
     process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
+    # TODO: encode() the strings for python3, when Offline GUI upgrades
     process.stdin.write("To: %s\n" % args.EMAIL)
     process.stdin.write("Subject: Problem sending DQM GUI index backup to EOS\n")
     process.stdin.write("\n")  # blank line separating headers from body

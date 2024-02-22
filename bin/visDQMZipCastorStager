@@ -6,7 +6,7 @@ from traceback import print_exc
 from tempfile import mkstemp
 from math import sqrt
 from glob import glob
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 
 
 DROPBOX = sys.argv[1]  # Directory where we receive input ("drop box").

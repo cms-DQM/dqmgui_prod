@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from Monitoring.Core.Plot import *
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, _loginfo
 from Monitoring.Overview.GUI import CompWorkspace
 from copy import copy
 import time

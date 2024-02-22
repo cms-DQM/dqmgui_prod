@@ -16,7 +16,7 @@ from threading import Thread, Lock
 from cherrypy import expose, HTTPError, request, response, engine, log, tools, Tool
 from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
-from Monitoring.Core.Utils import _logerr, _logwarn, ParameterManager
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
 from io import StringIO
 from stat import *
 from jsmin import jsmin
@@ -129,7 +129,6 @@ tools.params = ParameterManager()
 
 
 class Server:
-
     """The main server process, a CherryPy actor mounted to the URL tree.
     The basic server core orchestrates basic services such as session
     management, templates, static content and switching workspaces.
@@ -353,9 +352,9 @@ class Server:
         """Tell the browser not to cache this response."""
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "Sun, 19 Nov 1978 05:00:00 GMT"
-        response.headers[
-            "Cache-Control"
-        ] = "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+        response.headers["Cache-Control"] = (
+            "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
+        )
 
     def _addCSSFragment(self, filename):
         """Add a piece of CSS to the master HTML page."""

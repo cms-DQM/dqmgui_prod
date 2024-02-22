@@ -19,7 +19,7 @@ from matplotlib.cm import Accent
 from numpy import ma
 from matplotlib import cm
 from PIL import Image
-from Monitoring.Core.Utils import thousands, _loginfo, _logerr, _logwarn
+from Monitoring.Core.Utils.Common import thousands, _loginfo, _logerr, _logwarn
 
 
 # Utility function to convert text RGB colours to RGB triple in range [0, 1]

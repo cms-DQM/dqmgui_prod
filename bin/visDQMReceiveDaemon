@@ -3,7 +3,7 @@
 import os, os.path, time, sys, re, hashlib, functools
 import logging
 from traceback import print_exc
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from tempfile import mkstemp
 from stat import *
 from Monitoring.DQM import visDQMUtils
@@ -303,14 +303,15 @@ def finaliseOneFile(info):
                 info["runnr"],
                 info["dataset"].replace("/", "__"),
             )
-            info[
-                "zippat"
-            ] = "OfflineData/%s/%s/DQM_Offline_%s_%s_R%07dxx_S%%04d.zip" % (
-                info["era"],
-                info["primds"],
-                info["era"],
-                info["primds"],
-                info["runnr"] / 100,
+            info["zippat"] = (
+                "OfflineData/%s/%s/DQM_Offline_%s_%s_R%07dxx_S%%04d.zip"
+                % (
+                    info["era"],
+                    info["primds"],
+                    info["era"],
+                    info["primds"],
+                    info["runnr"] / 100,
+                )
             )
             assignUniqueVersion(info)
             ok = True
