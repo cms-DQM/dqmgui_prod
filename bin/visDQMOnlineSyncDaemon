@@ -19,7 +19,7 @@ from time import time, strptime, sleep
 from optparse import OptionParser
 from urllib import parse
 from calendar import timegm
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from traceback import print_exc
 from tempfile import mkstemp
 from stat import *

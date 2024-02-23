@@ -30,7 +30,7 @@ systems = {
         ],
         "etc": ["makefile*"],
         "bin": ["mon*", "visDQM*", "dqm-*"],
-        "python": ["Monitoring.Core", "Monitoring.DQM"],
+        "python": ["Monitoring.Core", "Monitoring.Core.Utils", "Monitoring.DQM"],
         "data": [
             "javascript/Core/*.js",
             "javascript/DQM/*.js",
@@ -47,7 +47,7 @@ systems = {
         "cpp": [],
         "etc": [],
         "bin": ["mon*"],
-        "python": ["Monitoring.Core", "Monitoring.Overview"],
+        "python": ["Monitoring.Core", "Monitoring.Core.Utils", "Monitoring.Overview"],
         "data": [
             "javascript/Core/*.js",
             "javascript/Overview/*.js",
@@ -263,5 +263,11 @@ setup(
     cmdclass={"build_system": BuildCommand, "install_system": InstallCommand},
     package_dir={"Monitoring": "src/python"},
     requires=["requests"],
-    packages=["Monitoring", "Monitoring.Core", "Monitoring.DQM", "Monitoring.Overview"],
+    packages=[
+        "Monitoring",
+        "Monitoring.Core",
+        "Monitoring.Core.Utils",
+        "Monitoring.DQM",
+        "Monitoring.Overview",
+    ],
 )

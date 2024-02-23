@@ -3,7 +3,7 @@
 import os, os.path, time, sys, argparse, subprocess, functools
 from subprocess import Popen, PIPE
 from traceback import print_exc
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from datetime import datetime, timedelta
 from glob import glob
 from fcntl import lockf, LOCK_EX, LOCK_UN
@@ -240,11 +240,11 @@ def sendIndexIntegrityErrorMessage():
         "Sending email to %s to notify about failed index integrity check." % args.email
     )
     process = Popen("/usr/sbin/sendmail -t", shell=True, stdin=PIPE)
-    process.stdin.write("To: %s\n" % args.email)
-    process.stdin.write("Subject: Problem when checking the index integrity\n")
-    process.stdin.write("\n")  # blank line separating headers from body
-    process.stdin.write("Problem when checking the index integrity\n")
-    process.stdin.write("Please check logs! This is serious!\n")
+    process.stdin.write(f"To: {args.email}\n".encode())
+    process.stdin.write("Subject: Problem when checking the index integrity\n".encode())
+    process.stdin.write("\n".encode())  # blank line separating headers from body
+    process.stdin.write("Problem when checking the index integrity\n".encode())
+    process.stdin.write("Please check logs! This is serious!\n".encode())
     process.stdin.close()
     returncode = process.wait()
     if returncode != 0:

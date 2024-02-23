@@ -8,7 +8,7 @@ from Monitoring.Core.Plot import (
     CumulativeTimeSeriesChart,
     TimeSeriesBarChart,
 )
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, _loginfo
 from Monitoring.Overview.GUI import CompWorkspace
 from cherrypy import HTTPError, engine
 from copy import deepcopy, copy

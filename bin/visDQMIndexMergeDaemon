@@ -2,7 +2,7 @@
 
 import os, time, sys
 from glob import glob
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from traceback import print_exc
 from subprocess import Popen, PIPE
 from fcntl import lockf, LOCK_EX, LOCK_UN

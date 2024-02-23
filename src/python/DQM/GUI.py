@@ -5,7 +5,7 @@ from copy import deepcopy
 from html import escape
 from threading import Lock
 from Monitoring.DQM import Accelerator
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, ParameterManager
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, _loginfo, ParameterManager
 from cherrypy import (
     expose,
     HTTPError,

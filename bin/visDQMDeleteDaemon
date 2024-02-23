@@ -2,7 +2,7 @@
 
 import re, os, time, sys
 from traceback import print_exc
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from urllib import request
 from fcntl import lockf, LOCK_EX, LOCK_UN
 

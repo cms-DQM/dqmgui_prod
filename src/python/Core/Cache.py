@@ -1,4 +1,4 @@
-from Monitoring.Core.Utils import _logwarn, _loginfo
+from Monitoring.Core.Utils.Common import _logwarn, _loginfo
 from threading import Thread, Lock, Event
 from cherrypy import engine
 import time, datetime

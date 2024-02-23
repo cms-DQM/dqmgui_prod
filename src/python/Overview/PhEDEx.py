@@ -6,7 +6,7 @@ from Monitoring.Core.Plot import (
     LatencyDensityMap,
     stitchPlotAndLegend,
 )
-from Monitoring.Core.Utils import _logwarn, timeseries
+from Monitoring.Core.Utils.Common import _logwarn, timeseries
 from Monitoring.Overview.GUI import CompWorkspace
 from cherrypy import HTTPError
 from threading import Lock

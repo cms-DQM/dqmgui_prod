@@ -3,7 +3,7 @@
 from stat import *
 from copy import deepcopy, copy
 from threading import Thread, Lock
-from Monitoring.Core.Utils import _logerr, _logwarn, _loginfo, natsorted
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, _loginfo, natsorted
 from cherrypy import expose, HTTPError, tree, response, engine, thread_data, log
 from cherrypy.lib.static import serve_file
 import os, re, time, shutil, tempfile

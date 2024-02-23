@@ -2,7 +2,7 @@
 
 import os, os.path, sys
 from time import strftime, localtime, sleep, time
-from Monitoring.Core.Utils import logme
+from Monitoring.Core.Utils.Common import logme
 from tempfile import mkstemp
 from glob import glob
 from threading import Thread, Lock, active_count
