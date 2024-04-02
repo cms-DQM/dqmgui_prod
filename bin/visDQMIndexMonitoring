@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Bash script which checks the limits of the index for a specific DQMGUI flavor.
+# If any of the size limits exceeds the ALERT_THRESHOLD, an email is sent to EMAIL_ADDRESS_TO_NOTIFY.
+#
+# This script works by dumping the target DQMGUI's index catalog to a temporary file and counting
+# the objects stored in its several types of trees (see _tree_types below). Each tree
+# has its own limit, defined in VisDQMIndex.h, which is parsed and compared with the current tree size.
+#
+# Example usage: visDQMIndexMonitoring FLAVOR=offline
+
+set -e
+
+FLAVOR=dev
+INSTALLATION_DIR=/data/srv
+TMP_CATALOGUE_FILE=/tmp/dqmgui_catalogue
+EMAIL_ADDRESS_TO_NOTIFY=cms-dqm-coreTeam@cern.ch
+# Alarm threshold value [0.0, 1.0].
+# An alarm is triggered if any of the tree sizes exceed 80% of their capacity.
+ALERT_THRESHOLD="0.8"
+
+preliminary_checks() {
+    if [ ! -d "$INSTALLATION_DIR" ] || [ ! -d "$INSTALLATION_DIR/state/dqmgui/$FLAVOR/ix128" ]; then
+        echo "Could not find $FLAVOR DQMGUI in $INSTALLATION_DIR"
+        exit 1
+    fi
+    # Needed to get the index limits
+    if ! find $INSTALLATION_DIR/current/ -name "VisDQMIndex.h"; then
+        echo "Could not find required file \"VisDQMIndex.h\" in $INSTALLATION_DIR"
+        exit 1
+    fi
+}
+
+# Sources the env.sh file needed for activating the DQMGUI environment,
+# then dumps the Index' catalogue to the TMP_CATALOGUE_FILE
+dump_catalogue() {
+    source $(find $INSTALLATION_DIR/current/ -name "env.sh" | head -1)
+    visDQMIndex dump $INSTALLATION_DIR/state/dqmgui/$FLAVOR/ix128 catalogue >$TMP_CATALOGUE_FILE
+}
+
+check_index_limits_and_send_email() {
+    visdqmindex_header_file=$(find $INSTALLATION_DIR/current/ -name "VisDQMIndex.h" | head -1)
+    msg=
+    # Run over all tree types
+    for i in $(seq 0 $((${#_tree_types[@]} - 1))); do
+        tree_current_size=$(grep "${_tree_types[$i]}" $TMP_CATALOGUE_FILE | wc -l)
+        tree_limit=$(grep -oE "${_tree_types_limit_name[$i]}[[:space:]]+[0-9]+" "$visdqmindex_header_file" | awk '{print $2}')
+        echo "Found $tree_current_size ${_tree_types[$i]} in the catalogue. Limit is $tree_limit."
+        # Check if alarm threshold is exceeded
+        threshold=$(printf '%.0f' $(bc <<<"$ALERT_THRESHOLD * $tree_limit"))
+        if [ $tree_current_size -gt $threshold ]; then
+            msg=$(printf "%s" "${msg}There are $tree_current_size ${_tree_types[$i]} in the index, which is above the $threshold threshold!\n")
+        fi
+    done
+    if [ -n "$msg" ]; then
+        printf "$msg" | mail -s "visDQMIndexMonitoring on $(hostname)" "$EMAIL_ADDRESS_TO_NOTIFY"
+    fi
+}
+
+cleanup() {
+    rm -rf $TMP_CATALOGUE_FILE
+}
+
+### Main script
+
+declare -a steps=(
+    preliminary_checks
+    dump_catalogue
+    check_index_limits_and_send_email
+    cleanup
+)
+
+# Create dynamic flags to selectively disable/enable steps of the installation
+# Those flags are named "do_" with the name of the function, e.g. "do_dump_catalogue" for
+# the "dump_catalogue".
+# We set those flags to 1 by default.
+for step in "${steps[@]}"; do
+    eval "do_${step}=1"
+done
+
+# Parse command line arguments -- use <key>=<value> to override the flags mentioned above.
+# e.g. do_dump_catalogue=0
+for ARGUMENT in "$@"; do
+    KEY=$(echo "$ARGUMENT" | cut -f1 -d=)
+    KEY_LENGTH=${#KEY}
+    VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+    eval "$KEY=$VALUE"
+done
+
+# The different types of trees in the index which you get by running visDQMIndex dump catalogue
+_tree_types=("CMSSW-VERSION" "DATASET-NAME" "OBJECT-NAME" "SOURCE-FILE")
+# The definition names of the limits, in VisDQMIndex.h, in one-to-one mapping to the _tree_types
+_tree_types_limit_name=("CMSSWNAMES" "DATASETNAMES" "OBJECTNAMES" "PATHNAMES")
+
+# For each step, check if the appropriate flag is enabled.
+for step in "${steps[@]}"; do
+
+    installation_step_flag_name=do_$step
+    if [ "${!installation_step_flag_name}" -ne 0 ]; then
+        echo "Step: $step"
+        # Run the actual function
+        eval "$step"
+    else
+        echo "Skipping step: $step"
+    fi
+done
