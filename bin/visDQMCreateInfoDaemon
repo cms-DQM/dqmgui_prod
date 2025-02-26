@@ -50,7 +50,7 @@ while True:
                     if not fMatch and not fMMatch:
                         continue
                     file_contents = ""
-                    with open(fileName, "r") as _f:
+                    with open(fileName, "rb") as _f:
                         file_contents = _f.read()
                     fDict = {
                         "subsystem": subSystem,
@@ -66,8 +66,7 @@ while True:
                         "runnr": runNr,
                         "filepat": "OnlineData/original/%05dxxxx/%07dxx/DQM_V%%04d_%s_R%09d.root"
                         % (runNr / 10000, runNr / 100, subSystem, runNr),
-                        "md5sum": "%s"
-                        % hashlib.md5(file_contents.encode()).hexdigest(),
+                        "md5sum": "%s" % hashlib.md5(file_contents).hexdigest(),
                         "class": "online_data",
                         "version": version,
                         "time": int(os.stat(fileName).st_mtime),
