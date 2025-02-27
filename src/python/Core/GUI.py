@@ -17,7 +17,7 @@ from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
 from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
 from io import StringIO
-from stat import *
+from stat import ST_MTIME, ST_SIZE
 from jsmin import jsmin
 from http import client
 import pickle
@@ -357,7 +357,7 @@ class Server:
 
     def _addCSSFragment(self, filename):
         """Add a piece of CSS to the master HTML page."""
-        if not filename in dict(self.css):
+        if filename not in dict(self.css):
             with open(filename) as _f:
                 text = _f.read()
             if filename.startswith(self._yui):
@@ -401,7 +401,7 @@ class Server:
 
     def _addJSFragment(self, filename, minimise=True):
         """Add a piece of javascript to the master HTML page."""
-        if not filename in dict(self.js):
+        if filename not in dict(self.js):
             with open(filename) as _f:
                 text = _f.read()
             if minimise:
@@ -652,8 +652,8 @@ class Server:
                 severity=logging.WARNING,
             )
 
-        self._noResponseCaching()
-        return str(e)
+            self._noResponseCaching()
+            return str(e)
 
     # -----------------------------------------------------------------
     @expose
@@ -693,8 +693,8 @@ class Server:
                 severity=logging.WARNING,
             )
 
-        self._noResponseCaching()
-        return str(e)
+            self._noResponseCaching()
+            return str(e)
 
     # -----------------------------------------------------------------
     @expose
@@ -709,7 +709,7 @@ class Server:
                 for s in self.sources:
                     if getattr(s, "plothook", None) == args[0]:
                         (type, data) = s.plot(*args[1:], **kwargs)
-                        if type != None:
+                        if type is not None:
                             self._noResponseCaching()
                             response.headers["Content-Length"] = str(len(data))
                             response.headers["Content-Type"] = type
@@ -745,10 +745,7 @@ class Server:
         )
         summary = ""
 
-        def cmp(a, b):
-            return (a > b) - (a < b)
-
-        self.checksums.sort(lambda a, b: cmp(a["srcfile"], b["srcfile"]))
+        self.checksums.sort(key=lambda x: x["srcfile"])
         for i in self.checksums:
             summary += fmt % i
 
