@@ -12,11 +12,13 @@
 # include "TH2F.h"
 # include "TH2S.h"
 # include "TH2D.h"
+# include "TH2Poly.h"
 # include "TH3F.h"
 # include "TProfile.h"
 # include "TProfile2D.h"
 # include "TObjString.h"
 # include "TAxis.h"
+# include "TGraph.h"
 # include <sys/time.h>
 # include <string>
 # include <set>
@@ -60,6 +62,7 @@ public:
     DQM_KIND_TH2F       = DQMNet::DQM_PROP_TYPE_TH2F,
     DQM_KIND_TH2S       = DQMNet::DQM_PROP_TYPE_TH2S,
     DQM_KIND_TH2D       = DQMNet::DQM_PROP_TYPE_TH2D,
+    DQM_KIND_TH2Poly    = DQMNet::DQM_PROP_TYPE_TH2Poly,
     DQM_KIND_TH3F       = DQMNet::DQM_PROP_TYPE_TH3F,
     DQM_KIND_TH1I       = DQMNet::DQM_PROP_TYPE_TH1I,
     DQM_KIND_TH2I       = DQMNet::DQM_PROP_TYPE_TH2I,
@@ -266,6 +269,7 @@ private:
 public:
   std::string getAxisTitle(int axis = 1) const;
   std::string getTitle(void) const;
+  // void addBin(TGraph *graph);
   void setBinContent(int binx, double content);
   void setBinContent(int binx, int biny, double content);
   void setBinContent(int binx, int biny, int binz, double content);
@@ -349,6 +353,7 @@ public:
   TH2F *getTH2F(void) const;
   TH2S *getTH2S(void) const;
   TH2D *getTH2D(void) const;
+  TH2Poly *getTH2Poly(void) const;
   TH3F *getTH3F(void) const;
   TProfile *getTProfile(void) const;
   TProfile2D *getTProfile2D(void) const;
@@ -363,6 +368,7 @@ public:
   TH2F *getRefTH2F(void) const;
   TH2S *getRefTH2S(void) const;
   TH2D *getRefTH2D(void) const;
+  TH2Poly *getRefTH2Poly(void) const;
   TH3F *getRefTH3F(void) const;
   TProfile *getRefTProfile(void) const;
   TProfile2D *getRefTProfile2D(void) const;

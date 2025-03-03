@@ -1111,6 +1111,12 @@ DQMStore::book2D(const std::string &dir, const std::string &name, TH2F *h)
   return book(dir, name, "book2D", MonitorElement::DQM_KIND_TH2F, h, collate2D);
 }
 
+MonitorElement *
+DQMStore::book2DPoly(const std::string &dir, const std::string &name, TH2Poly *h)
+{
+  return book(dir, name, "book2DPoly", MonitorElement::DQM_KIND_TH2Poly, h, collate2DPoly);
+}
+
 /// Book 2D histogram based on TH2S.
 MonitorElement * DQMStore::book2S(const std::string &dir, const std::string &name, TH2S *h) {
   return book(dir, name, "book2S", MonitorElement::DQM_KIND_TH2S, h, collate2S);
@@ -1147,6 +1153,17 @@ DQMStore::book2D(const std::string &name, const std::string &title,
   return book2D(pwd_, name, new TH2F(name.c_str(), title.c_str(),
                                      nchX, lowX, highX,
                                      nchY, lowY, highY));
+}
+
+/// Book TH2Poly histogram.
+MonitorElement *
+DQMStore::book2DPoly(const char *name, const char *title,
+                     double lowX, double highX,
+                     double lowY, double highY)
+{
+  return book2DPoly(pwd_, name, new TH2Poly(name, title,
+                                            lowX, highX,
+                                            lowY, highY));
 }
 
 /// Book 2S histogram.
@@ -1591,6 +1608,13 @@ DQMStore::collate2D(MonitorElement *me, TH2F *h, unsigned verbose)
 {
   if (checkBinningMatches(me,h,verbose))
     me->getTH2F()->Add(h);
+}
+
+void
+DQMStore::collate2DPoly(MonitorElement *me, TH2Poly *h, unsigned verbose)
+{
+  if (checkBinningMatches(me,h,verbose))
+    me->getTH2Poly()->Add(h, 1.);
 }
 
 void
@@ -2252,6 +2276,17 @@ DQMStore::extract(TObject *obj, const std::string &dir,
       me->copyFrom(h);
     else if (isCollateME(me) || collateHistograms)
       collate2DD(me, h, verbose_);
+    refcheck = me;
+  }
+  else if (TH2Poly *h = dynamic_cast<TH2Poly *>(obj))
+  {
+    MonitorElement *me = findObject(dir, h->GetName());
+    if (! me)
+      me = book2DPoly(dir, h->GetName(), (TH2Poly *) h->Clone());
+    else if (overwrite)
+      me->copyFrom(h);
+    else if (isCollateME(me) || collateHistograms)
+      collate2DPoly(me, h, verbose_);
     refcheck = me;
   }
   else if (TH3F *h = dynamic_cast<TH3F *>(obj))
@@ -3523,6 +3558,11 @@ DQMStore::scaleElements(void)
       case MonitorElement::DQM_KIND_TH2D:
         {
           me.getTH2D()->Scale(factor);
+          break;
+        }
+      case MonitorElement::DQM_KIND_TH2Poly:
+        {
+          me.getTH2Poly()->Scale(factor);
           break;
         }
       case MonitorElement::DQM_KIND_TH3F:

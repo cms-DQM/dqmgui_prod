@@ -475,6 +475,7 @@ static MEClass classifyMonitorElement(DQMStore & /* store */,
   case MonitorElement::DQM_KIND_TH2F:
   case MonitorElement::DQM_KIND_TH2S:
   case MonitorElement::DQM_KIND_TH2D:
+  case MonitorElement::DQM_KIND_TH2Poly:
   case MonitorElement::DQM_KIND_TH2I:
   case MonitorElement::DQM_KIND_TH3F:
   case MonitorElement::DQM_KIND_TPROFILE:
@@ -1033,6 +1034,7 @@ static void extend(VisDQMIndex &ix, VisDQMIndex::Sample &s, uint64_t nsample,
             case MonitorElement::DQM_KIND_TH2F:
             case MonitorElement::DQM_KIND_TH2S:
             case MonitorElement::DQM_KIND_TH2D:
+            case MonitorElement::DQM_KIND_TH2Poly:
             case MonitorElement::DQM_KIND_TH2I:
             case MonitorElement::DQM_KIND_TH3F:
             case MonitorElement::DQM_KIND_TPROFILE:
@@ -1234,6 +1236,7 @@ static void readFileStream(FileInfo &fi, std::string &streamerinfo,
     case MonitorElement::DQM_KIND_TH2S:
     case MonitorElement::DQM_KIND_TH2I:
     case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH2Poly:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -1349,6 +1352,7 @@ static void readFileStreamProtocolBuffer(
     case MonitorElement::DQM_KIND_TH2S:
     case MonitorElement::DQM_KIND_TH2I:
     case MonitorElement::DQM_KIND_TH2D:
+    case MonitorElement::DQM_KIND_TH2Poly:
     case MonitorElement::DQM_KIND_TH3F:
     case MonitorElement::DQM_KIND_TPROFILE:
     case MonitorElement::DQM_KIND_TPROFILE2D:
@@ -2549,6 +2553,7 @@ static int dumpIndex(const Filename &indexdir, DumpType what, size_t sampleid) {
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2F ? ", TH2F" : "")
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2S ? ", TH2S" : "")
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2I ? ", TH2I" : "")
+                << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH2Poly ? ", TH2Poly" : "")
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH3F ? ", TH3F" : "")
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TH3S ? ", TH3S" : "")
                 << (type == VisDQMIndex::SUMMARY_PROP_TYPE_TPROF ? ", TPROF"

@@ -99,7 +99,7 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     ref_ = me->getRefTH1D(); //access Ref hiso 
     if (nbins != nbinsref) return -1;
   } 
-  //-- TH2
+  //-- TH2F
   else if (me->kind()==MonitorElement::DQM_KIND_TH2F)
   { 
     nbins = me->getTH2F()->GetXaxis()->GetNbins() *
@@ -111,7 +111,7 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     if (nbins != nbinsref) return -1;
   } 
 
-  //-- TH2
+  //-- TH2S
   else if (me->kind()==MonitorElement::DQM_KIND_TH2S)
   { 
     nbins = me->getTH2S()->GetXaxis()->GetNbins() *
@@ -123,7 +123,7 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     if (nbins != nbinsref) return -1;
   } 
 
-  //-- TH2
+  //-- TH2D
   else if (me->kind()==MonitorElement::DQM_KIND_TH2D)
   { 
     nbins = me->getTH2D()->GetXaxis()->GetNbins() *
@@ -134,6 +134,18 @@ float Comp2RefEqualH::runTest(const MonitorElement*me)
     ref_ = me->getRefTH2D(); //access Ref hiso 
     if (nbins != nbinsref) return -1;
   } 
+
+  //-- TH2Poly
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2Poly)
+  {
+    nbins = me->getTH2Poly()->GetXaxis()->GetNbins() *
+            me->getTH2Poly()->GetYaxis()->GetNbins();
+    nbinsref = me->getRefTH2Poly()->GetXaxis()->GetNbins() *
+               me->getRefTH2Poly()->GetYaxis()->GetNbins();
+    h = me->getTH2Poly(); // access Test histo
+    ref_ = me->getRefTH2Poly(); //access Ref hiso
+    if (nbins != nbinsref) return -1;
+  }
 
   //-- TH3
   else if (me->kind()==MonitorElement::DQM_KIND_TH3F)
@@ -213,6 +225,12 @@ float Comp2RefChi2::runTest(const MonitorElement *me)
   { 
     h = me->getTH2I(); // access Test histo
     ref_ = me->getRefTH2I(); //access Ref histo
+  } 
+  //-- TH2Poly
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2Poly)
+  { 
+    h = me->getTH2Poly(); // access Test histo
+    ref_ = me->getRefTH2Poly(); //access Ref histo
   } 
   //-- TH1D
   else if (me->kind()==MonitorElement::DQM_KIND_TH1D)
@@ -819,14 +837,14 @@ float NoisyChannel::runTest(const MonitorElement *me)
     nbins = me->getTH1D()->GetXaxis()->GetNbins(); 
     h  = me->getTH1D(); // access Test histo
   } 
-  //-- TH2
+  //-- TH2F
   else if (me->kind()==MonitorElement::DQM_KIND_TH2F)
   { 
     nbins = me->getTH2F()->GetXaxis()->GetNbins() *
             me->getTH2F()->GetYaxis()->GetNbins();
     h  = me->getTH2F(); // access Test histo
   } 
-  //-- TH2
+  //-- TH2S
   else if (me->kind()==MonitorElement::DQM_KIND_TH2S)
   { 
     nbins = me->getTH2S()->GetXaxis()->GetNbins() *
@@ -839,7 +857,13 @@ float NoisyChannel::runTest(const MonitorElement *me)
             me->getTH2I()->GetYaxis()->GetNbins();
     h  = me->getTH2I(); // access Test histo
   } 
-  //-- TH2
+  else if (me->kind()==MonitorElement::DQM_KIND_TH2Poly)
+  { 
+    nbins = me->getTH2Poly()->GetXaxis()->GetNbins() *
+            me->getTH2Poly()->GetYaxis()->GetNbins();
+    h  = me->getTH2Poly(); // access Test histo
+  } 
+  //-- TH2D
   else if (me->kind()==MonitorElement::DQM_KIND_TH2D)
   { 
     nbins = me->getTH2D()->GetXaxis()->GetNbins() *

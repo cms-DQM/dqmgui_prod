@@ -47,6 +47,7 @@ MonitorElement::initialise(Kind kind)
   case DQM_KIND_TH2F:
   case DQM_KIND_TH2S:
   case DQM_KIND_TH2D:
+  case DQM_KIND_TH2Poly:
   case DQM_KIND_TH3F:
   case DQM_KIND_TPROFILE:
   case DQM_KIND_TPROFILE2D:
@@ -113,6 +114,12 @@ MonitorElement::initialise(Kind kind, TH1 *rootobj)
   case DQM_KIND_TH2D:
     assert(dynamic_cast<TH2D *>(rootobj));
     assert(! reference_ || dynamic_cast<TH1D *>(reference_));
+    object_ = rootobj;
+    break;
+
+  case DQM_KIND_TH2Poly:
+    assert(dynamic_cast<TH2Poly *>(rootobj));
+    assert(! reference_ || dynamic_cast<TH2Poly *>(reference_));
     object_ = rootobj;
     break;
 
@@ -334,6 +341,7 @@ MonitorElement::Fill(double x, double yw)
     static_cast<TH2S *>(accessRootObject(__PRETTY_FUNCTION__, 2))
       ->Fill(x, yw, 1);
   else if (kind() == DQM_KIND_TH2D) static_cast<TH2D *>(accessRootObject(__PRETTY_FUNCTION__, 2))->Fill(x, yw, 1);
+  else if (kind() == DQM_KIND_TH2Poly) static_cast<TH2Poly *>(accessRootObject(__PRETTY_FUNCTION__, 2))->Fill(x, yw, 1);
   else if (kind() == DQM_KIND_TH2I) static_cast<TH2I *>(accessRootObject(__PRETTY_FUNCTION__, 2))->Fill(x, yw, 1);
   else if (kind() == DQM_KIND_TPROFILE)
     static_cast<TProfile *>(accessRootObject(__PRETTY_FUNCTION__, 1))
@@ -429,6 +437,9 @@ MonitorElement::Fill(double x, double y, double zw)
       ->Fill(x, y, zw);
   else if (kind() == DQM_KIND_TH2D)
     static_cast<TH2D *>(accessRootObject(__PRETTY_FUNCTION__, 2))
+      ->Fill(x, y, zw);
+  else if (kind() == DQM_KIND_TH2Poly)
+    static_cast<TH2Poly *>(accessRootObject(__PRETTY_FUNCTION__, 2))
       ->Fill(x, y, zw);
   else if (kind() == DQM_KIND_TH3F)
     static_cast<TH3F *>(accessRootObject(__PRETTY_FUNCTION__, 2))
@@ -849,6 +860,15 @@ MonitorElement::getTitle(void) const
 
 /*** setter methods (wrapper around ROOT methods) ****/
 //
+// /// set polygonal bin (TH2Poly)
+// void
+// MonitorElement::addBin(TGraph *graph)
+// {
+//   update();
+//   accessRootObject(__PRETTY_FUNCTION__, 2)
+//     ->AddBin(graph);
+// }
+
 /// set content of bin (1-D)
 void
 MonitorElement::setBinContent(int binx, double content)
@@ -1128,6 +1148,27 @@ MonitorElement::softReset(void)
     r->Add(orig);
     orig->Reset();
   }
+  else if (kind() == DQM_KIND_TH2Poly)
+  {
+    TH2Poly *orig = static_cast<TH2Poly *>(object_);
+    TH2Poly *r = static_cast<TH2Poly *>(refvalue_);
+    if (! r)
+    {
+      refvalue_ = r = (TH2Poly*)orig->Clone((std::string(orig->GetName()) + "_ref").c_str());
+      r->SetDirectory(0);
+      r->Reset("");
+    }
+
+    // r->Add(orig);
+    int nbins = r->GetNcells() - 9;
+    for(int ibin=1; ibin<nbins+1; ++ibin) {
+        double value1 = r->GetBinContent(ibin);
+        double value2 = orig->GetBinContent(ibin);
+        double total = value1 + value2;
+        r->SetBinContent(ibin, total);
+    }
+    orig->Reset("");
+  }
   else if (kind() == DQM_KIND_TH3F)
   {
     TH3F *orig = static_cast<TH3F *>(object_);
@@ -1188,6 +1229,7 @@ MonitorElement::disableSoftReset(void)
         || kind() == DQM_KIND_TH2F
         || kind() == DQM_KIND_TH2S
         || kind() == DQM_KIND_TH2D
+        || kind() == DQM_KIND_TH2Poly
         || kind() == DQM_KIND_TH3F)
     {
       TH1 *orig = static_cast<TH1 *>(object_);
@@ -1364,6 +1406,7 @@ MonitorElement::copyFrom(TH1 *from)
         || kind() == DQM_KIND_TH2F
         || kind() == DQM_KIND_TH2S
         || kind() == DQM_KIND_TH2D
+        || kind() == DQM_KIND_TH2Poly
         || kind() == DQM_KIND_TH3F)
       // subtract "reference"
       orig->Add(from, refvalue_, 1, -1);
@@ -1539,6 +1582,14 @@ MonitorElement::getTH2D(void) const
   return static_cast<TH2D *>(accessRootObject(__PRETTY_FUNCTION__, 2));
 }
 
+TH2Poly *
+MonitorElement::getTH2Poly(void) const
+{
+  assert(kind() == DQM_KIND_TH2Poly);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH2Poly *>(accessRootObject(__PRETTY_FUNCTION__, 2));
+}
+
 TH3F *
 MonitorElement::getTH3F(void) const
 {
@@ -1641,6 +1692,15 @@ MonitorElement::getRefTH2D(void) const
   assert(kind() == DQM_KIND_TH2D);
   const_cast<MonitorElement *>(this)->update();
   return static_cast<TH2D *>
+    (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 2));
+}
+
+TH2Poly *
+MonitorElement::getRefTH2Poly(void) const
+{
+  assert(kind() == DQM_KIND_TH2Poly);
+  const_cast<MonitorElement *>(this)->update();
+  return static_cast<TH2Poly *>
     (checkRootObject(data_.objname, reference_, __PRETTY_FUNCTION__, 2));
 }
 
