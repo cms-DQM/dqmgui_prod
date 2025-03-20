@@ -55,7 +55,7 @@ check_index_limits_and_send_email() {
         # Check if alarm threshold is exceeded
         threshold=$(printf '%.0f' $(bc <<<"$ALERT_THRESHOLD * ${tree_limits[$tree_name]}"))
         if [ $tree_current_size -gt $threshold ]; then
-            msg=$(printf "%s" "${msg}WARNING: DQMGUI's index tree $tree_name has $tree_current_size entries out of the maximum ${tree_limit} ($(printf '%.2f' $percent_full)%% full)\n")
+            msg=$(printf "%s" "${msg}WARNING: DQMGUI's index tree $tree_name has $tree_current_size entries out of the maximum ${tree_limits[$tree_name]} ($(printf '%.2f' $percent_full)%% full)\n")
         fi
     done
     if [ -n "$msg" ]; then
