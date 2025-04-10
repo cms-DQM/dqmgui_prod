@@ -830,7 +830,7 @@ class Server:
             # so do it seperately.
             # See: https://stackoverflow.com/a/28674109/6562491
 
-            connection = client.HTTPSConnection(host="tinyurl.com", port=443, timeout=3)
+            connection = client.HTTPSConnection(host="tinyurl.com", port=443, timeout=0.7)
             connection.request("GET", f"/api-create.php?url={longUrl}")
             response = connection.getresponse()
 
