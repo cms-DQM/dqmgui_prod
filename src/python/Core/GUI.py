@@ -6,6 +6,18 @@
 # such as file and socket operations.  On "straight" python code the
 # interpreter yields the lock only every N byte code instructions;
 # this server configures a large N (1'000'000).
+import pickle
+import sys
+import os
+import os.path
+import re
+import tempfile
+import time
+import inspect
+import logging
+import traceback
+import hashlib
+import base64
 from importlib import import_module
 from imp import get_suffixes
 from copy import deepcopy
@@ -15,14 +27,12 @@ from threading import Thread, Lock
 from cherrypy import expose, HTTPError, request, response, engine, log, tools
 from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
-from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
 from io import StringIO
 from stat import ST_MTIME, ST_SIZE
-from jsmin import jsmin
 from http import client
-import pickle
-import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
-import base64
+from jsmin import jsmin
+from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
+
 
 _SESSION_REDIRECT = (
     "<html><head><script>location.replace('%s')</script></head>"
@@ -830,7 +840,7 @@ class Server:
             # so do it seperately.
             # See: https://stackoverflow.com/a/28674109/6562491
 
-            connection = client.HTTPSConnection(host="tinyurl.com", port=443, timeout=0.7)
+            connection = client.HTTPSConnection(host="web-redirector-v2-qa.web.cern.ch", port=443, timeout=0.7)
             connection.request("GET", f"/api-create.php?url={longUrl}")
             response = connection.getresponse()
 
