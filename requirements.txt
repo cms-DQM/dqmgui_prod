@@ -5,4 +5,5 @@ matplotlib
 pillow
 jsmin
 Cheetah3
+cernrequests
 . # Also install dqmgui itself
