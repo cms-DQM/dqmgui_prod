@@ -18,6 +18,8 @@ import logging
 import traceback
 import hashlib
 import base64
+import json
+from typing import Union
 from importlib import import_module
 from imp import get_suffixes
 from copy import deepcopy
@@ -31,6 +33,8 @@ from io import StringIO
 from stat import ST_MTIME, ST_SIZE
 from http import client
 from jsmin import jsmin
+import cernrequests
+from dotenv import load_dotenv
 from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
 
 
@@ -39,6 +43,9 @@ _SESSION_REDIRECT = (
     + "<body><noscript>Please enable JavaScript to use this"
     + " service</noscript></body></html>"
 )
+
+# Load dotenv from the cwd, which should be <state dir>/dqmgui
+load_dotenv(os.path.join(os.getcwd(), ".env"))
 
 
 def extension(modules, what, *args):
@@ -827,6 +834,16 @@ class Server:
     @expose
     @tools.params()
     def urlshortener(self, *args, **kwargs):
+        # https://gitlab.cern.ch/webservices/web-redirector-v2/-/tree/master/app/api?ref_type=heads
+
+        # QA url shortener endpoint
+        # SHORTENER_SERVICE_BASE_URL = "web-redirector-v2-qa.web.cern.ch"
+        # TARGET_APPLICATION = "web-redirector-v2-qa"
+
+        # Production url shortener endpoint
+        SHORTENER_SERVICE_BASE_URL = "web-redirector-v2-production-cern-ch.web.cern.ch"
+        TARGET_APPLICATION = "web-redirector-v2-production-cern-ch"
+
         if not "url" in kwargs.keys():
             return "{}"
 
@@ -834,29 +851,77 @@ class Server:
         shortUrl = longUrl
 
         try:
-            # Add a timeout to the request to tinyurl, as it takes ages to fail
-            # in case we don't have acess to the outside world (see: P5).
-            # Timeout is ignored in the part of URL to IP resolution,
-            # so do it seperately.
+            # Get the client id and client secret from the envirnoment.
+            # Those are required to get an access token and authenticate
+            # against the shortener service.
+            client_id = os.environ.get("CERN_SSO_CLIENT_ID")
+            client_secret = os.environ.get("CERN_SSO_CLIENT_SECRET")
+            sso_token = self._get_cern_sso_api_token(
+                client_id=client_id,
+                client_secret=client_secret,
+                target_application=TARGET_APPLICATION,
+            )
+            assert sso_token
+
+            # Add a timeout to the request to URL shortener service
             # See: https://stackoverflow.com/a/28674109/6562491
-
-            connection = client.HTTPSConnection(host="web-redirector-v2-qa.web.cern.ch", port=443, timeout=0.7)
-            connection.request("GET", f"/api-create.php?url={longUrl}")
+            connection = client.HTTPSConnection(
+                host=SHORTENER_SERVICE_BASE_URL, port=443, timeout=0.7
+            )
+            connection.request(
+                "POST",
+                "/_/api/shorturlentry",
+                headers={
+                    "Authorization": "Bearer " + sso_token,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                body=json.dumps(
+                    {"targetUrl": longUrl, "description": "", "appendQuery": False}
+                ),
+            )
             response = connection.getresponse()
-
-            if response.status == 200:
-                shortUrl = response.read().decode("utf-8")
+            if response.status == 200 or response.status == 201:  # OK or Created
+                response_payload = response.read().decode("utf-8")
+                try:
+                    shortUrl = f"https://cern.ch/{json.loads(response_payload)['slug']}"
+                except json.decoder.JSONDecodeError:
+                    log(
+                        f"WARNING: unable to shorten URL: {longUrl}. Reason: invalid response received from url shortener"
+                    )
+                except KeyError:
+                    log(
+                        f"WARNING: unable to shorten URL: {longUrl}. Reason: No 'slug' found in response"
+                    )
             else:
                 log(
                     f"WARNING: urlshortener returned status: {response.status} and response: {response.read().decode()} for url: {longUrl}",
                     severity=logging.WARNING,
                 )
-
             connection.close()
+
         except Exception as e:
             log(f"WARNING: unable to shorten URL: {longUrl}. Reason: {repr(e)}")
 
-        return '{"id": "%s"}' % shortUrl
+        return f'{{"id": "{shortUrl}"}}'
+
+    @staticmethod
+    def _get_cern_sso_api_token(
+        client_id: Union[str, None],
+        client_secret: Union[str, None],
+        target_application: Union[str, None],
+    ) -> Union[str, None]:
+        sso_token = None
+        if not client_id or not client_secret:
+            raise Exception(
+                "client_id and client_secret are both required to get an SSO token"
+            )
+        sso_token, sso_token_expiration = cernrequests.get_api_token(
+            client_id=client_id,
+            client_secret=client_secret,
+            target_application=target_application,
+        )
+        return sso_token
 
     def sessionIndex(self, session, *args, **kwargs):
         """Generate top level session index.  This produces the main GUI web
