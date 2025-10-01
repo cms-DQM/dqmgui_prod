@@ -19,7 +19,6 @@ import traceback
 import hashlib
 import base64
 import json
-from typing import Union
 from importlib import import_module
 from imp import get_suffixes
 from copy import deepcopy
@@ -33,9 +32,14 @@ from io import StringIO
 from stat import ST_MTIME, ST_SIZE
 from http import client
 from jsmin import jsmin
-import cernrequests
 from dotenv import load_dotenv
-from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
+from Monitoring.Core.Utils.Common import (
+    _logerr,
+    _logwarn,
+    ParameterManager,
+    parse_http_proxy_config,
+)
+from Monitoring.Core.Utils.Auth import get_cern_sso_api_token
 
 
 _SESSION_REDIRECT = (
@@ -43,9 +47,6 @@ _SESSION_REDIRECT = (
     + "<body><noscript>Please enable JavaScript to use this"
     + " service</noscript></body></html>"
 )
-
-# Load dotenv from the cwd, which should be <state dir>/dqmgui
-load_dotenv(os.path.join(os.getcwd(), ".env"))
 
 
 def extension(modules, what, *args):
@@ -223,9 +224,8 @@ class Server:
        Server integrity check of source files."""
 
     def __init__(self, cfgfile, cfg, modules):
-        # Don't use a map, because we want to iterate over
-        # the modules many times
-        # modules = map(import_module, modules)
+        # Load dotenv from the cwd, which should be <state dir>/dqmgui
+        load_dotenv(os.path.join(os.getcwd(), ".env"))
         self.instrument = cfg.instrument
         self.checksums = []
         self.stamp = time.time()
@@ -235,6 +235,16 @@ class Server:
         self.templates = {}
         self.css = []
         self.js = []
+        # Get the client id and client secret from the environment.
+        # Those are required to get an access token and authenticate
+        # against the shortener service.
+        # If they're not provided, they will be set to None,
+        # shortening will not work, and the long URLs will be returned instead.
+        self.client_id = os.environ.get("CERN_SSO_CLIENT_ID")
+        self.client_secret = os.environ.get("CERN_SSO_CLIENT_SECRET")
+        self.proxy_url, self.proxy_port = parse_http_proxy_config(
+            os.environ.get("http_proxy")
+        )
 
         monitor_root = os.getenv("MONITOR_ROOT")
         if os.access("%s/xdata/templates/index.tmpl" % monitor_root, os.R_OK):
@@ -851,23 +861,29 @@ class Server:
         shortUrl = longUrl
 
         try:
-            # Get the client id and client secret from the envirnoment.
-            # Those are required to get an access token and authenticate
-            # against the shortener service.
-            client_id = os.environ.get("CERN_SSO_CLIENT_ID")
-            client_secret = os.environ.get("CERN_SSO_CLIENT_SECRET")
-            sso_token = self._get_cern_sso_api_token(
-                client_id=client_id,
-                client_secret=client_secret,
+            sso_token = get_cern_sso_api_token(
+                client_id=self.client_id,
+                client_secret=self.client_secret,
                 target_application=TARGET_APPLICATION,
             )
             assert sso_token
 
-            # Add a timeout to the request to URL shortener service
-            # See: https://stackoverflow.com/a/28674109/6562491
-            connection = client.HTTPSConnection(
-                host=SHORTENER_SERVICE_BASE_URL, port=443, timeout=0.7
-            )
+            # We're using http.client to add a timeout to the request
+            # to the URL shortener service, which is why we're not using
+            # the requests module.
+            # See also: https://stackoverflow.com/a/28674109/6562491
+            # If http_proxy is set in the environment, use it to
+            # access the URL shortener service.
+            if self.proxy_url and self.proxy_port:
+                connection = client.HTTPSConnection(
+                    host=self.proxy_url, port=self.proxy_port, timeout=0.7
+                )
+                connection.set_tunnel(host=SHORTENER_SERVICE_BASE_URL, port=443)
+            else:
+                connection = client.HTTPSConnection(
+                    host=SHORTENER_SERVICE_BASE_URL, port=443, timeout=0.7
+                )
+
             connection.request(
                 "POST",
                 "/_/api/shorturlentry",
@@ -904,24 +920,6 @@ class Server:
             log(f"WARNING: unable to shorten URL: {longUrl}. Reason: {repr(e)}")
 
         return f'{{"id": "{shortUrl}"}}'
-
-    @staticmethod
-    def _get_cern_sso_api_token(
-        client_id: Union[str, None],
-        client_secret: Union[str, None],
-        target_application: Union[str, None],
-    ) -> Union[str, None]:
-        sso_token = None
-        if not client_id or not client_secret:
-            raise Exception(
-                "client_id and client_secret are both required to get an SSO token"
-            )
-        sso_token, sso_token_expiration = cernrequests.get_api_token(
-            client_id=client_id,
-            client_secret=client_secret,
-            target_application=target_application,
-        )
-        return sso_token
 
     def sessionIndex(self, session, *args, **kwargs):
         """Generate top level session index.  This produces the main GUI web
