@@ -1,8 +1,13 @@
-import os, re, time, calendar, logging, sys
+import os
+import re
+import time
+import calendar
+import logging
+import sys
+import inspect
 from cherrypy import log, Tool, request
 from cherrypy._cpreqbody import Part
 from datetime import datetime
-import inspect
 
 RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
 RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
