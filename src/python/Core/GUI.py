@@ -6,6 +6,19 @@
 # such as file and socket operations.  On "straight" python code the
 # interpreter yields the lock only every N byte code instructions;
 # this server configures a large N (1'000'000).
+import pickle
+import sys
+import os
+import os.path
+import re
+import tempfile
+import time
+import inspect
+import logging
+import traceback
+import hashlib
+import base64
+import json
 from importlib import import_module
 from imp import get_suffixes
 from copy import deepcopy
@@ -15,14 +28,19 @@ from threading import Thread, Lock
 from cherrypy import expose, HTTPError, request, response, engine, log, tools
 from cherrypy.lib.static import serve_file
 from Cheetah.Template import Template
-from Monitoring.Core.Utils.Common import _logerr, _logwarn, ParameterManager
 from io import StringIO
 from stat import ST_MTIME, ST_SIZE
-from jsmin import jsmin
 from http import client
-import pickle
-import sys, os, os.path, re, tempfile, time, inspect, logging, traceback, hashlib
-import base64
+from jsmin import jsmin
+from dotenv import load_dotenv
+from Monitoring.Core.Utils.Common import (
+    _logerr,
+    _logwarn,
+    ParameterManager,
+    parse_http_proxy_config,
+)
+from Monitoring.Core.Utils.Auth import get_cern_sso_api_token
+
 
 _SESSION_REDIRECT = (
     "<html><head><script>location.replace('%s')</script></head>"
@@ -206,9 +224,8 @@ class Server:
        Server integrity check of source files."""
 
     def __init__(self, cfgfile, cfg, modules):
-        # Don't use a map, because we want to iterate over
-        # the modules many times
-        # modules = map(import_module, modules)
+        # Load dotenv from the cwd, which should be <state dir>/dqmgui
+        load_dotenv(os.path.join(os.getcwd(), ".env"))
         self.instrument = cfg.instrument
         self.checksums = []
         self.stamp = time.time()
@@ -218,6 +235,16 @@ class Server:
         self.templates = {}
         self.css = []
         self.js = []
+        # Get the client id and client secret from the environment.
+        # Those are required to get an access token and authenticate
+        # against the shortener service.
+        # If they're not provided, they will be set to None,
+        # shortening will not work, and the long URLs will be returned instead.
+        self.client_id = os.environ.get("CERN_SSO_CLIENT_ID")
+        self.client_secret = os.environ.get("CERN_SSO_CLIENT_SECRET")
+        self.proxy_url, self.proxy_port = parse_http_proxy_config(
+            os.environ.get("http_proxy")
+        )
 
         monitor_root = os.getenv("MONITOR_ROOT")
         if os.access("%s/xdata/templates/index.tmpl" % monitor_root, os.R_OK):
@@ -817,6 +844,16 @@ class Server:
     @expose
     @tools.params()
     def urlshortener(self, *args, **kwargs):
+        # https://gitlab.cern.ch/webservices/web-redirector-v2/-/tree/master/app/api?ref_type=heads
+
+        # QA url shortener endpoint
+        # SHORTENER_SERVICE_BASE_URL = "web-redirector-v2-qa.web.cern.ch"
+        # TARGET_APPLICATION = "web-redirector-v2-qa"
+
+        # Production url shortener endpoint
+        SHORTENER_SERVICE_BASE_URL = "web-redirector-v2-production-cern-ch.web.cern.ch"
+        TARGET_APPLICATION = "web-redirector-v2-production-cern-ch"
+
         if not "url" in kwargs.keys():
             return "{}"
 
@@ -824,29 +861,65 @@ class Server:
         shortUrl = longUrl
 
         try:
-            # Add a timeout to the request to tinyurl, as it takes ages to fail
-            # in case we don't have acess to the outside world (see: P5).
-            # Timeout is ignored in the part of URL to IP resolution,
-            # so do it seperately.
-            # See: https://stackoverflow.com/a/28674109/6562491
+            sso_token = get_cern_sso_api_token(
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                target_application=TARGET_APPLICATION,
+            )
+            assert sso_token
 
-            connection = client.HTTPSConnection(host="tinyurl.com", port=443, timeout=0.7)
-            connection.request("GET", f"/api-create.php?url={longUrl}")
+            # We're using http.client to add a timeout to the request
+            # to the URL shortener service, which is why we're not using
+            # the requests module.
+            # See also: https://stackoverflow.com/a/28674109/6562491
+            # If http_proxy is set in the environment, use it to
+            # access the URL shortener service.
+            if self.proxy_url and self.proxy_port:
+                connection = client.HTTPSConnection(
+                    host=self.proxy_url, port=self.proxy_port, timeout=0.7
+                )
+                connection.set_tunnel(host=SHORTENER_SERVICE_BASE_URL, port=443)
+            else:
+                connection = client.HTTPSConnection(
+                    host=SHORTENER_SERVICE_BASE_URL, port=443, timeout=0.7
+                )
+
+            connection.request(
+                "POST",
+                "/_/api/shorturlentry",
+                headers={
+                    "Authorization": "Bearer " + sso_token,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                body=json.dumps(
+                    {"targetUrl": longUrl, "description": "", "appendQuery": False}
+                ),
+            )
             response = connection.getresponse()
-
-            if response.status == 200:
-                shortUrl = response.read().decode("utf-8")
+            if response.status == 200 or response.status == 201:  # OK or Created
+                response_payload = response.read().decode("utf-8")
+                try:
+                    shortUrl = f"https://cern.ch/{json.loads(response_payload)['slug']}"
+                except json.decoder.JSONDecodeError:
+                    log(
+                        f"WARNING: unable to shorten URL: {longUrl}. Reason: invalid response received from url shortener"
+                    )
+                except KeyError:
+                    log(
+                        f"WARNING: unable to shorten URL: {longUrl}. Reason: No 'slug' found in response"
+                    )
             else:
                 log(
                     f"WARNING: urlshortener returned status: {response.status} and response: {response.read().decode()} for url: {longUrl}",
                     severity=logging.WARNING,
                 )
-
             connection.close()
+
         except Exception as e:
             log(f"WARNING: unable to shorten URL: {longUrl}. Reason: {repr(e)}")
 
-        return '{"id": "%s"}' % shortUrl
+        return f'{{"id": "{shortUrl}"}}'
 
     def sessionIndex(self, session, *args, **kwargs):
         """Generate top level session index.  This produces the main GUI web

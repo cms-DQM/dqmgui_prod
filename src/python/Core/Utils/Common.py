@@ -1,8 +1,15 @@
-import os, re, time, calendar, logging, sys
+import os
+import re
+import time
+import calendar
+import logging
+import sys
+import inspect
+from typing import Tuple, Union
+from urllib.parse import urlparse
 from cherrypy import log, Tool, request
 from cherrypy._cpreqbody import Part
 from datetime import datetime
-import inspect
 
 RE_DIGIT_SEQ = re.compile(r"([-+]?\d+)")
 RE_THOUSANDS = re.compile(r"(\d)(\d{3}($|\D))")
@@ -165,6 +172,27 @@ def sizevalue(val):
         return float(m.group(1)) * scale[m.group(2)]
     else:
         return float(val)
+
+
+# Parse the http_proxy env variable,
+# to be used to access http cern.ch resources
+# from P5
+def parse_http_proxy_config(
+    proxy_url_to_parse: str,
+) -> Tuple[Union[str, None], Union[int, None]]:
+    if not proxy_url_to_parse:
+        return None, None
+    parsed_proxy_url = urlparse(proxy_url_to_parse)
+
+    proxy_url = parsed_proxy_url.hostname
+    proxy_port = parsed_proxy_url.port
+
+    if not proxy_port:
+        if parsed_proxy_url.scheme == "https":
+            proxy_port = 443
+        else:
+            proxy_port = 80
+    return proxy_url, proxy_port
 
 
 class ParameterManager(Tool):
