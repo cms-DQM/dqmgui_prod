@@ -1229,6 +1229,23 @@ class VisDQMRenderLink {
     int height;
     int inuse;
     bool busy;
+
+    void assignWithoutDatabytes(const Image &other) {
+      id = other.id;
+      hash = other.hash;
+      version = other.version;
+      flags = other.flags;
+      tag = other.tag;
+      pathname = other.pathname;
+      imagespec = other.imagespec;
+      qdata = other.qdata;
+      pngbytes = other.pngbytes;
+      numparts = other.numparts;
+      width = other.width;
+      height = other.height;
+      inuse = other.inuse;
+      busy = other.busy;
+    }
   };
 
   Filename dir_;
@@ -1809,14 +1826,13 @@ private:
       assert(!img.busy);
       assert(!img.inuse);
       assert(img.pngbytes.empty());
-      img = proto;
+      img.assignWithoutDatabytes(proto);
       img.busy = true;
       img.inuse++;
 
       // If we are not rescaling, request and compress image.
       if (width == protoreq.width && height == protoreq.height) {
         requestimg(img, proto.databytes, srcbytes);
-        std::string().swap(img.databytes);
       }
       // Otherwise, we are rescaling. First get original bigger image,
       // then rescale and compress the image. We might either find the
@@ -1830,11 +1846,10 @@ private:
           assert(!srcimg.busy);
           assert(!srcimg.inuse);
           assert(srcimg.pngbytes.empty());
-          srcimg = protoreq;
+          srcimg.assignWithoutDatabytes(protoreq);
           srcimg.busy = true;
           srcimg.inuse++;
           requestimg(srcimg, protoreq.databytes, srcbytes);
-          std::string().swap(srcimg.databytes);
           assert(srcimg.inuse > 0);
           assert(srcimg.busy);
           srcimg.busy = false;
