@@ -258,8 +258,8 @@ class InstallCommand(install):
 
 setup(
     name="dqmgui",
-    version="10.4.0",
-    maintainer_email="hn-cms-dqmDevel@cern.ch",
+    version="10.5.0",
+    maintainer_email="cms-ppd-technical-support@cern.ch",
     cmdclass={"build_system": BuildCommand, "install_system": InstallCommand},
     package_dir={"Monitoring": "src/python"},
     requires=["requests"],
