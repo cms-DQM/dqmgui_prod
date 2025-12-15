@@ -1238,7 +1238,7 @@ GUI.Plugin.DQMCanvas = new function () {
         });
 
         Promise.all(promises).then(objects => {
-            let stack = JSROOT.Create("THStack");
+            let stack = JSROOT.create("THStack");
             objects.forEach((ob, index) => {
                 ob.fLineColor = colors[index]
                 if (index > 0) {
