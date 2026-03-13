@@ -61,7 +61,3 @@ Ask for the new version (cmsdist and dmwm/deployment PRs) to be added to the nex
 Eg.: https://gitlab.cern.ch/cms-http-group/doc/issues/207
 If you need a release urgently, ask for it to be tagged with an HG tag: (the new Lina) muhammad.imran@cern.ch dmwm/deployment PRs can be merged as patches during deployment (Online)
 
-## Continuous integration
-
-[Jenkins server](https://cms-dqmgui-ci.web.cern.ch/job/dqmgui-github/) uses `Jenkinsfile` to build.
-Slave `dqmgui-ci-worker` is configured to use the docker image produced [here](https://gitlab.cern.ch/rovere/dqmgui-ci-worker)
