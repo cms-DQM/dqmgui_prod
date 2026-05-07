@@ -23,14 +23,25 @@
 #include <unistd.h>
 
 #if __APPLE__
-#define MESSAGE_SIZE_LIMIT (1 * 1024 * 1024)
-#define SOCKET_BUF_SIZE (1 * 1024 * 1024)
+#define DEFAULT_MESSAGE_SIZE_LIMIT (1 * 1024 * 1024)
+#define DEFAULT_SOCKET_BUF_SIZE (1 * 1024 * 1024)
 #else
-#define MESSAGE_SIZE_LIMIT (8 * 1024 * 1024)
-#define SOCKET_BUF_SIZE (8 * 1024 * 1024)
+#define DEFAULT_MESSAGE_SIZE_LIMIT (8 * 1024 * 1024)
+#define DEFAULT_SOCKET_BUF_SIZE (8 * 1024 * 1024)
 #endif
-#define SOCKET_READ_SIZE (SOCKET_BUF_SIZE / 8)
-#define SOCKET_READ_GROWTH (SOCKET_BUF_SIZE)
+
+// Create configurable variables with macro defaults
+static unsigned int MESSAGE_SIZE_LIMIT = getenv("DQM_MESSAGE_SIZE_LIMIT") ?
+    atoi(getenv("DQM_MESSAGE_SIZE_LIMIT")) : DEFAULT_MESSAGE_SIZE_LIMIT;
+
+static unsigned int SOCKET_BUF_SIZE = getenv("DQM_SOCKET_BUF_SIZE") ?
+    atoi(getenv("DQM_SOCKET_BUF_SIZE")) : DEFAULT_SOCKET_BUF_SIZE;
+
+static unsigned int SOCKET_READ_SIZE = (getenv("DQM_SOCKET_BUF_SIZE") ?
+    atoi(getenv("DQM_SOCKET_BUF_SIZE")) : DEFAULT_SOCKET_BUF_SIZE) / 8;
+
+static unsigned int SOCKET_READ_GROWTH = getenv("DQM_SOCKET_BUF_SIZE") ?
+    atoi(getenv("DQM_SOCKET_BUF_SIZE")) : DEFAULT_SOCKET_BUF_SIZE;
 
 using namespace lat;
 
@@ -785,7 +796,10 @@ bool DQMNet::onPeerData(IOSelectEvent *ev, Peer *p) {
       memcpy(&msglen, &data[0] + consumed, sizeof(msglen));
 
       if (msglen >= MESSAGE_SIZE_LIMIT) {
-        losePeer("WARNING: excessively large message from ", p, ev);
+        // Log the warning with more detail
+        char msg[256];
+        snprintf(msg, sizeof(msg), "WARNING: excessively large message (%d MB / %d MB) from ", msglen/1024/1024, MESSAGE_SIZE_LIMIT/1024/1024);
+        losePeer(msg, p, ev);
         unlock();
         return true;
       }
@@ -960,6 +974,11 @@ DQMNet::DQMNet(const std::string &appname /* = "" */)
   upstream_.next = downstream_.next = 0;
   upstream_.port = downstream_.port = 0;
   upstream_.update = downstream_.update = false;
+
+  logme() << "[INFO] dqmgui_prod/src/cpp/DQM/DQMNet.cc::MESSAGE_SIZE_LIMIT: "
+          << (MESSAGE_SIZE_LIMIT / (1024 * 1024)) << " MB, "
+          << "SOCKET_BUF_SIZE: " << (SOCKET_BUF_SIZE / (1024 * 1024)) << " MB"
+          << std::endl;
 }
 
 DQMNet::~DQMNet(void) {
