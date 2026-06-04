@@ -14,7 +14,10 @@ set -e
 FLAVOR=dev
 INSTALLATION_DIR=/data/srv
 TMP_CATALOGUE_FILE=/tmp/dqmgui_catalogue
-EMAIL_ADDRESS_TO_NOTIFY=cms-dqm-coreTeam@cern.ch
+EMAIL_ADDRESS_TO_NOTIFY=cms-ppd-technical-support@cern.ch
+# Extra emails to be added into CC
+# Additional CC addresses can be added as comma-separated list (e.g. CC_EMAIL_ADDRESSES=cms-dqm-coreTeam@cern.ch,other@cern.ch)
+CC_EMAIL_ADDRESSES=cms-dqm-coreTeam@cern.ch
 # Alarm threshold value [0.0, 1.0].
 # An alarm is triggered if any of the tree sizes exceed 90% of their capacity.
 ALERT_THRESHOLD="0.9"
@@ -60,7 +63,7 @@ check_index_limits_and_send_email() {
     done
     if [ -n "$msg" ]; then
         echo "Sending email to $EMAIL_ADDRESS_TO_NOTIFY"
-        printf "$msg" | mail -s "visDQMIndexMonitoring on $(hostname) (${FLAVOR})" "$EMAIL_ADDRESS_TO_NOTIFY"
+        printf "$msg" | mail -s "visDQMIndexMonitoring on $(hostname) (${FLAVOR})" -c "$CC_EMAIL_ADDRESSES" "$EMAIL_ADDRESS_TO_NOTIFY"
     fi
 }
 
