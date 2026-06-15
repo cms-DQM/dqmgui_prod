@@ -31,23 +31,13 @@ Reference: https://linux.web.cern.ch/almalinux/alma10/locmap/
 Configure SSSD so that other users can log in to the machine:
 
 ```bash
-curl -o /etc/sssd/conf.d/10_sssd.conf https://linux.web.cern.ch/docs/sssd.conf.example
-OWNER=root  # EL8/EL9
-chown "${OWNER}:${OWNER}" /etc/sssd/conf.d/10_sssd.conf
-chmod 0600 /etc/sssd/conf.d/10_sssd.conf
-restorecon /etc/sssd/conf.d/10_sssd.conf
-rm /etc/sssd/conf.d/00_cern.conf
-```
+dnf erase -y cern-sssd-conf-\*
+dnf install -y cern-sssd-conf-domain-cernch cern-sssd-conf-global-cernch cern-sssd-conf-servers-cernch-gpn
+systemctl restart sssd
+authselect select sssd
 
-Then edit `/etc/sssd/conf.d/10_sssd.conf` and add or update the following line to restrict access to the appropriate e-group:
+printf '[domain/cern.ch]\nldap_access_filter = (&(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=CN=cms-PPD-technical-support,OU=e-groups,OU=Workgroups,DC=cern,DC=ch))\n' > /etc/sssd/conf.d/10_local.conf
 
-```
-ldap_access_filter = (&(objectClass=user)(memberOf:1.2.840.113556.1.4.1941:=CN=cms-PPD-technical-support,OU=e-groups,OU=Workgroups,DC=cern,DC=ch))
-```
-
-Finally, enable and restart SSSD:
-
-```bash
 authselect select sssd with-silent-lastlog --force
 systemctl enable sssd
 systemctl stop sssd
