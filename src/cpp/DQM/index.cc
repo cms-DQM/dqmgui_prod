@@ -1592,6 +1592,11 @@ static int addFiles(const Filename &indexdir, std::list<FileInfo> &files) {
             s.lastImportTime = now;
             s.sourceFileIdx = sapath.index();
             s.importVersion++;
+            s.numObjects = numObjs;
+            s.numEvents = numEvents;
+            s.numLumiSections = numLumiSections;
+            s.runStartTime = runStartTime;
+            s.processedTime = processedTime;
             extend(ix, s, samples.size() - 1, minfo, objnames, oldfiles,
                    newfiles, streamFile | streampbFile, rootobjs);
             datafile[0] = s.files[0];
