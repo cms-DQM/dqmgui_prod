@@ -1229,6 +1229,23 @@ class VisDQMRenderLink {
     int height;
     int inuse;
     bool busy;
+
+    void assignWithoutDatabytes(const Image &other) {
+      id = other.id;
+      hash = other.hash;
+      version = other.version;
+      flags = other.flags;
+      tag = other.tag;
+      pathname = other.pathname;
+      imagespec = other.imagespec;
+      qdata = other.qdata;
+      pngbytes = other.pngbytes;
+      numparts = other.numparts;
+      width = other.width;
+      height = other.height;
+      inuse = other.inuse;
+      busy = other.busy;
+    }
   };
 
   Filename dir_;
@@ -1512,7 +1529,7 @@ private:
     for (int i = 0; i < IMAGE_CACHE_SIZE; ++i) {
       if (cache_[i].id && cache_[i].hash == proto.hash &&
           cache_[i].width == proto.width && cache_[i].height == proto.height &&
-          cache_[i].databytes == proto.databytes &&
+          //   cache_[i].databytes == proto.databytes &&
           cache_[i].qdata == proto.qdata &&
           cache_[i].pathname == proto.pathname &&
           cache_[i].imagespec == proto.imagespec) {
@@ -1563,9 +1580,10 @@ private:
       f << i->second << ' ' << i->first << std::endl;
   }
 
-  void requestimg(Image &img, std::string &imgbytes, const bool json = false,
+  void requestimg(Image &img, const std::string &databytes_in,
+                  std::string &imgbytes_out, const bool json = false,
                   const bool jsroot = false) {
-    assert(imgbytes.empty());
+    assert(imgbytes_out.empty());
 
     // Pick the least loaded server to talk to.  While we do that,
     // check the servers are still running; restart those that are
@@ -1662,7 +1680,7 @@ private:
 
       uint32_t words[11] = {(uint32_t)(sizeof(words) + img.pathname.size() +
                                        img.imagespec.size() +
-                                       img.databytes.size() + img.qdata.size()),
+                                       databytes_in.size() + img.qdata.size()),
                             msg_type,
                             img.flags,
                             img.tag,
@@ -1671,7 +1689,7 @@ private:
                             (uint32_t)img.numparts,
                             (uint32_t)img.pathname.size(),
                             (uint32_t)img.imagespec.size(),
-                            (uint32_t)img.databytes.size(),
+                            (uint32_t)databytes_in.size(),
                             (uint32_t)img.qdata.size()};
 
       std::string message;
@@ -1679,7 +1697,7 @@ private:
       message.append((const char *)&words[0], sizeof(words));
       message.append(img.pathname);
       message.append(img.imagespec);
-      message.append(img.databytes);
+      message.append(databytes_in);
       message.append(img.qdata);
       sock.xwrite(&message[0], message.size());
       message.clear();
@@ -1691,7 +1709,7 @@ private:
            words[1] == DQM_REPLY_JSROOT_DATA)) {
         message.resize(words[0] - 2 * sizeof(uint32_t), '\0');
         if (sock.xread(&message[0], message.size()) == message.size())
-          imgbytes = message;
+          imgbytes_out = message;
       }
     } catch (Error &e) {
       logme() << "ERROR: failed to retrieve image: " << e.explain()
@@ -1707,11 +1725,11 @@ private:
     if (sock.fd() == IOFD_INVALID)
       srv.pending.clear();
     else {
-      if (!imgbytes.empty()) {
+      if (!imgbytes_out.empty()) {
         srv.checkme = false;
         srv.lastimg.clear();
         if (msg_type == DQM_MSG_GET_IMAGE_DATA)
-          compress(img, imgbytes);
+          compress(img, imgbytes_out);
       }
       srv.pending.pop_front();
     }
@@ -1808,14 +1826,14 @@ private:
       assert(!img.busy);
       assert(!img.inuse);
       assert(img.pngbytes.empty());
-      img = proto;
+      img.assignWithoutDatabytes(proto);
       img.busy = true;
       img.inuse++;
 
       // If we are not rescaling, request and compress image.
-      if (width == protoreq.width && height == protoreq.height)
-        requestimg(img, srcbytes);
-
+      if (width == protoreq.width && height == protoreq.height) {
+        requestimg(img, proto.databytes, srcbytes);
+      }
       // Otherwise, we are rescaling. First get original bigger image,
       // then rescale and compress the image. We might either find the
       // original as-is, in which case we need to expand the PNG form,
@@ -1828,10 +1846,10 @@ private:
           assert(!srcimg.busy);
           assert(!srcimg.inuse);
           assert(srcimg.pngbytes.empty());
-          srcimg = protoreq;
+          srcimg.assignWithoutDatabytes(protoreq);
           srcimg.busy = true;
           srcimg.inuse++;
-          requestimg(srcimg, srcbytes);
+          requestimg(srcimg, protoreq.databytes, srcbytes);
           assert(srcimg.inuse > 0);
           assert(srcimg.busy);
           srcimg.busy = false;
@@ -1889,8 +1907,7 @@ private:
     assert(img.pngbytes.empty());
     img.busy = true;
     img.inuse++;
-    requestimg(img, jsonData, !jsroot, jsroot);
-
+    requestimg(img, proto.databytes, jsonData, !jsroot, jsroot);
     assert(img.inuse > 0);
     assert(img.busy);
     img.busy = false;
@@ -2681,8 +2698,8 @@ public:
     // FIXME: from client: buildStreamerInfo(streamers_);
     pthread_rwlock_init(&itemlock_, 0);
     pthread_cond_init(&reqrecv_, 0);
-    logme() << "INFO: DQM live thread started"
-            << ", listening for data from " << host << ":" << port << "\n";
+    logme() << "INFO: DQM live thread started" << ", listening for data from "
+            << host << ":" << port << "\n";
 
     debug(verbose);
     delay(500);
